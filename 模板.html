@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>戴森球(云)蓝图</title>
+    <style>
+        .page{
+            display: flex;
+            justify-content: center;
+        }
+        .card,.card_title,#标题{
+            padding: 0 5px;
+            background: rgb(230, 230, 230);
+            border-radius: 5px;
+            border: 1px solid rgb(90, 90, 90);
+            text-align: center;
+        }
+        .card{
+            padding: 5px;
+            width: 100%;
+            display: grid;
+            gap: 5px;
+            grid-template-columns: 150px 1fr;
+            grid-template-rows: 1fr 150px;
+            
+        }
+        .card_title{
+            width: 100%;
+            height: auto;
+            grid-column: 1/-1;
+        }
+        .card_data{
+            resize: none;
+            grid-column: 2/3;
+            grid-row: 1/-1;
+        }
+        body{
+            overflow-y: scroll;
+            margin: auto;
+            position: relative;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4NCiAgICA8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZmlsbD0icmdiYSgwLDAsMCwwLjEpIiBmb250LXNpemU9IjE1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgdHJhbnNmb3JtPSJyb3RhdGUoLTMwLDEwMCwxMDApIj7msKLnorPpkr54djwvdGV4dD4NCjwvc3ZnPg==');
+            background-repeat: repeat;
+            background-attachment: fixed;
+        }
+        #蓝图{
+            width: max(300px,60%);
+            padding-top: 55px;
+            padding-bottom: 80px;
+            display: grid;
+            gap: 5px 17px;
+            grid-template-columns: repeat(auto-fill,minmax(300px, 1fr));
+            grid-auto-rows: min-content;
+            justify-items: center;
+        }
+        #标题{
+            width: max(300px,60%);
+            position: fixed;
+            top: 10px;
+            z-index: 99;
+        }
+    </style>
+</head>
+<body>
+    <div class="page"><div id="标题"></div><div id="蓝图"></div></div>
+<script>
+
+/*存储蓝图数据*/
+const BPlist ={};
+/**/
+const NoneImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIj4NCiAgPGRlZnM+DQogICAgPHN0eWxlPg0KICAgICAgLmNscy0xIHsNCiAgICAgICAgZm9udC1zaXplOiA3MHB4Ow0KICAgICAgICBmaWxsOiAjZmZmOw0KICAgICAgICB0ZXh0LWFuY2hvcjogbWlkZGxlOw0KICAgICAgICBmb250LWZhbWlseTogU1RIdXBvOw0KICAgICAgfQ0KICAgIDwvc3R5bGU+DQogIDwvZGVmcz4NCiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzAwMCIvPg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSI1OSI+5rKh5pyJPC90ZXh0Pg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSIxMzIuMyI+5Zu+54mHPC90ZXh0Pg0KPC9zdmc+DQo="
+
+function initUI() {
+    const List = Object.keys(BPlist);
+    let html = "";
+    for (let i = 0; i < List.length; i++) {
+        html += `<button style="margin: 5px;" onclick="loadBP('${List[i]}')">${List[i]}</button>`;
+    }
+    document.getElementById('标题').innerHTML = html;
+    loadBP(List[0]);
+}
+
+function loadBP(bType) {
+    let html = `<div class="card_title">${bType}戴森球蓝图</div>`;
+    const list = BPlist[bType];
+    list.forEach(i => {
+        const {name, img, data} = i;
+        html += `<div class="card"><div style="margin:auto;">${name} <button onclick="cvBP('${name}')">复制</button></div><img src="${img || NoneImg}" width="150" height="150"><textarea class="card_data" id="${name}" readonly>${data}</textarea></div>`;
+    });
+    document.getElementById('蓝图').innerHTML = html;
+}
+
+async function cvBP(bid) {
+    try {
+        const text = document.getElementById(bid).value;
+        await navigator.clipboard.writeText(text);
+        alert('蓝图已复制到剪贴板');
+    } catch (err) {
+        alert('复制失败，请手动复制：\n' + err.message);
+    }
+}
+
+initUI();
+
+</script>
+</body>
+</html>

@@ -32,8 +32,12 @@ class 蓝图库编辑器(tk.Tk):
         self.导出JSON按钮.pack(side=tk.LEFT, padx=5)
         self.导出HTML按钮 = ttk.Button(self.顶部框架, text="导出为HTML", command=self.导出HTML)
         self.导出HTML按钮.pack(side=tk.LEFT, padx=5)
-        #self.导出文件夹按钮 = ttk.Button(self.顶部框架, text="导出文件夹", command='')
-        #self.导出文件夹按钮.pack(side=tk.LEFT, padx=5)
+        self.新建蓝图按钮 = ttk.Button(self.顶部框架, text="新建空蓝图", command=self.新建蓝图)
+        self.新建蓝图按钮.pack(side=tk.LEFT, padx=5)
+        self.移动蓝图按钮 = ttk.Button(self.顶部框架, text="移动蓝图", command=self.移动蓝图)
+        self.移动蓝图按钮.pack(side=tk.LEFT, padx=5)
+        self.批量导入按钮 = ttk.Button(self.顶部框架, text="批量导入", command=self.批量导入蓝图)
+        self.批量导入按钮.pack(side=tk.LEFT, padx=5)
         self.通知窗 = ttk.Entry(self.顶部框架, width=50)
         self.通知窗.config(state="disabled")
         self.通知窗.pack(side=tk.RIGHT, padx=5)
@@ -57,10 +61,6 @@ class 蓝图库编辑器(tk.Tk):
         self.添加类按钮.grid(row=1, column=0, columnspan=2, pady=2)
         self.修改类名按钮 = ttk.Button(self.类选项框架, text="修改类名", width=8, command=self.更名分类)
         self.修改类名按钮.grid(row=1, column=2, columnspan=2, pady=2)
-        self.移动蓝图按钮 = ttk.Button(self.类选项框架, text="移动蓝图", width=8, command=self.移动蓝图)
-        self.移动蓝图按钮.grid(row=2, column=0, columnspan=2, pady=2)
-        self.批量导入按钮 = ttk.Button(self.类选项框架, text="批量导入", width=8, command=self.批量导入蓝图)
-        self.批量导入按钮.grid(row=2, column=2, columnspan=2, pady=2)
         
         self.蓝图列表框架 = ttk.LabelFrame(self.主框架, text="蓝图列表 - 未选择分类")
         self.蓝图列表框架.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
@@ -373,6 +373,21 @@ class 蓝图库编辑器(tk.Tk):
                 
         except Exception:
             messagebox.showerror("错误","文件导入失败")
+    
+    def 新建蓝图(self):
+        if self._当前类型 == None:
+            messagebox.showwarning("警告", "未选择蓝图类型")
+            return
+        名字列表 = [名["name"] for 名 in self._蓝图库[self._当前类型]]
+        新数据 = {
+            "name": self.添加序号("新蓝图",名字列表),
+            "data": ""
+        }
+        self._蓝图库[self._当前类型].append(新数据)
+        self._当前蓝图索引 = len(self._蓝图库[self._当前类型]) -1
+        self.刷新蓝图列表()
+        self.通知(f'已添加 {新数据["name"]}')
+
 
     def 保存蓝图(self):
         if self._当前类型 == None:

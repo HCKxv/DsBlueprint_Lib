@@ -64,9 +64,11 @@ class 蓝图库编辑器(tk.Tk):
         
         self.蓝图列表框架 = ttk.LabelFrame(self.主框架, text="蓝图列表 - 未选择分类")
         self.蓝图列表框架.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
-        
-        self.蓝图列表 = tk.Listbox(self.蓝图列表框架, width=20, height=20, exportselection=False)
+        self.滚动条 = tk.Scrollbar(self.蓝图列表框架)
+        self.滚动条.pack(side=tk.RIGHT, fill=tk.Y)
+        self.蓝图列表 = tk.Listbox(self.蓝图列表框架, width=20, height=20, exportselection=False, yscrollcommand=self.滚动条.set)
         self.蓝图列表.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.滚动条.config(command=self.蓝图列表.yview)
         self.蓝图列表.bind('<<ListboxSelect>>', self.选中蓝图)
         
         self.编辑区框架 = ttk.LabelFrame(self.主框架, text="蓝图编辑")
@@ -386,6 +388,7 @@ class 蓝图库编辑器(tk.Tk):
         self._蓝图库[self._当前类型].append(新数据)
         self._当前蓝图索引 = len(self._蓝图库[self._当前类型]) -1
         self.刷新蓝图列表()
+        self._数据是否未保存 = True
         self.通知(f'已添加 {新数据["name"]}')
 
 

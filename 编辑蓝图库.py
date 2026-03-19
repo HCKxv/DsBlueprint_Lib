@@ -92,7 +92,7 @@ class 蓝图库编辑器(tk.Tk):
         self.复制按钮 = ttk.Button(self.编辑区框架, text="复制代码", command=self.复制蓝图代码)
         self.复制按钮.grid(row=2, column=2, columnspan=2, padx=2, sticky=tk.W)
 
-        self.图片预览标签 = ttk.Label(self.编辑区框架, text="蓝图图片:")
+        self.图片预览标签 = ttk.Label(self.编辑区框架, text="*蓝图图片:")
         self.图片预览标签.grid(row=3, column=0, padx=8, pady=8, sticky=tk.NW)
         self.预览画布 = tk.Canvas(self.编辑区框架, width=160, height=160, bg="#f5f5f5", bd=1, relief="solid")
         self.预览画布.grid(row=3, column=1, padx=8, pady=8)
@@ -102,6 +102,11 @@ class 蓝图库编辑器(tk.Tk):
         self.导入图片按钮.grid(padx=2, sticky=tk.W)
         self.删除图片按钮 = ttk.Button(self.图片编辑框架, text="删除图片", command=self.删除图片)
         self.删除图片按钮.grid(padx=2, sticky=tk.W)
+
+        self.备注标签 = ttk.Label(self.编辑区框架, text="*蓝图备注:")
+        self.备注标签.grid(row=4, column=0, padx=8, pady=8, sticky=tk.W)
+        self.备注输入框 = ttk.Entry(self.编辑区框架, width=40)
+        self.备注输入框.grid(row=4, column=1, columnspan=3, padx=8, pady=8, sticky=tk.W)
         
         self.按钮框架 = ttk.Frame(self.编辑区框架)
         self.按钮框架.grid(row=5, column=0, columnspan=4, pady=5)
@@ -166,6 +171,7 @@ class 蓝图库编辑器(tk.Tk):
         self.编号显示标签.config(text="新建蓝图：")
         self.名称输入框.delete(0, tk.END)
         self.代码输入框.delete("1.0", tk.END)
+        self.备注输入框.delete(0, tk.END)
         self._输入的图片 = None
         self.加载图片预览()
 
@@ -176,6 +182,9 @@ class 蓝图库编辑器(tk.Tk):
         self.编号显示标签.config(text=f"修改蓝图：{self._当前类型} -- {蓝图数据["name"]}")
         self.名称输入框.insert(0, 蓝图数据['name'])
         self.代码输入框.insert("1.0", 蓝图数据['data'])
+        备注 = 蓝图数据.get('memo', '')
+        if 备注.strip():
+            self.备注输入框.insert(0, 备注)
         self._输入的图片 = 蓝图数据.get("img","")
         self.加载图片预览()
 
@@ -355,6 +364,7 @@ class 蓝图库编辑器(tk.Tk):
         新数据 = {
             "name": self.名称输入框.get().strip(),
             "data": self.代码输入框.get("1.0", tk.END).strip(),
+            "memo": self.备注输入框.get().strip(),
         }
 
         if not self.检查名字(新数据["name"]):
@@ -514,9 +524,11 @@ class 蓝图库编辑器(tk.Tk):
             路径 = filedialog.asksaveasfilename(initialdir=".",defaultextension=".html", filetypes=[("HTML","*.html")],title="导出为HTML")
             if not 路径: return
 
-            HTML头=r"""<!doctype html><html lang="zh-cn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>戴森球(云)蓝图</title><style>.page{display:flex;justify-content:center}.card,.card_title,#标题{padding:0 5px;background:#e6e6e6;border-radius:5px;border:1px solid #5a5a5a;text-align:center}.card{padding:5px;width:100%;display:grid;gap:5px;grid-template-columns:150px 1fr;grid-template-rows:1fr 150px}.card_title{width:100%;height:auto;grid-column:1/-1}.card_data{resize:none;grid-column:2/3;grid-row:1/-1}body{overflow-y:scroll;margin:auto;position:relative;background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4NCiAgICA8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZmlsbD0icmdiYSgwLDAsMCwwLjEpIiBmb250LXNpemU9IjE1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgdHJhbnNmb3JtPSJyb3RhdGUoLTMwLDEwMCwxMDApIj7msKLnorPpkr54djwvdGV4dD4NCjwvc3ZnPg==);background-repeat:repeat;background-attachment:fixed}#蓝图{width:max(300px,60%);padding-top:55px;padding-bottom:80px;display:grid;gap:5px 17px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));grid-auto-rows:min-content;justify-items:center}#标题{width:max(300px,60%);position:fixed;top:10px;z-index:99}</style></head><body><div class="page"><div id="标题"></div><div id="蓝图"></div></div><script>const BPlist="""
-            HTML尾=r""",NoneImg="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIj4NCiAgPGRlZnM+DQogICAgPHN0eWxlPg0KICAgICAgLmNscy0xIHsNCiAgICAgICAgZm9udC1zaXplOiA3MHB4Ow0KICAgICAgICBmaWxsOiAjZmZmOw0KICAgICAgICB0ZXh0LWFuY2hvcjogbWlkZGxlOw0KICAgICAgICBmb250LWZhbWlseTogU1RIdXBvOw0KICAgICAgfQ0KICAgIDwvc3R5bGU+DQogIDwvZGVmcz4NCiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzAwMCIvPg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSI1OSI+5rKh5pyJPC90ZXh0Pg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSIxMzIuMyI+5Zu+54mHPC90ZXh0Pg0KPC9zdmc+DQo=";function initUI(){const e=Object.keys(BPlist);let t="";for(let n=0;n<e.length;n++)t+=`<button style="margin: 5px;" onclick="loadBP('${e[n]}')">${e[n]}</button>`;document.getElementById("标题").innerHTML=t,loadBP(e[0])}function loadBP(e){let t=`<div class="card_title">${e}戴森球蓝图</div>`;const n=BPlist[e];n.forEach(e=>{const{name:n,img:s,data:o}=e;t+=`<div class="card"><div style="margin:auto;">${n} <button onclick="cvBP('${n}')">复制</button></div><img src="${s||NoneImg}" width="150" height="150"><textarea class="card_data" id="${n}" readonly>${o}</textarea></div>`}),document.getElementById("蓝图").innerHTML=t}async function cvBP(e){try{const t=document.getElementById(e).value;await navigator.clipboard.writeText(t),alert("蓝图已复制到剪贴板")}catch(e){alert(`复制失败，请手动复制：\n`+e.message)}}initUI()</script></body></html>"""
-            html = HTML头 + json.dumps(self._蓝图库) + HTML尾
+            name=""
+            HTML1=r"""<!doctype html><html lang="zh-cn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>戴森球(云)蓝图</title><style>.page{display:flex;justify-content:center}.card,.card_title,#标题{padding:0 5px;background:#e6e6e6;border-radius:5px;border:1px solid #5a5a5a;text-align:center}.card{padding:5px;width:100%;display:grid;gap:5px;grid-template-columns:150px 1fr;grid-template-rows:1fr 150px}.card_title{width:100%;height:auto;grid-column:1/-1}.card_data{resize:none;grid-column:2/3;grid-row:1/-1}.Memo{width:100%;height:15px;margin:0;padding:0;line-height:1;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;grid-column:1/-1}body{overflow-y:scroll;margin:auto;position:relative;background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4NCiAgICA8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZmlsbD0icmdiYSgwLDAsMCwwLjEpIiBmb250LXNpemU9IjE1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgdHJhbnNmb3JtPSJyb3RhdGUoLTMwLDEwMCwxMDApIj7msKLnorPpkr54djwvdGV4dD4NCjwvc3ZnPg==);background-repeat:repeat;background-attachment:fixed}#蓝图{width:max(320px,60%);padding-top:55px;padding-bottom:80px;display:grid;gap:5px 17px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));grid-auto-rows:min-content;justify-items:center}#标题{width:max(320px,60%);position:fixed;top:10px;z-index:99}</style></head><body><div class="page"><div id="标题"></div><div id="蓝图"></div></div><script>const BPlist="""
+            HTML2=r""",NoneImg="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIj4NCiAgPGRlZnM+DQogICAgPHN0eWxlPg0KICAgICAgLmNscy0xIHsNCiAgICAgICAgZm9udC1zaXplOiA3MHB4Ow0KICAgICAgICBmaWxsOiAjZmZmOw0KICAgICAgICB0ZXh0LWFuY2hvcjogbWlkZGxlOw0KICAgICAgICBmb250LWZhbWlseTogU1RIdXBvOw0KICAgICAgfQ0KICAgIDwvc3R5bGU+DQogIDwvZGVmcz4NCiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzAwMCIvPg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSI1OSI+5rKh5pyJPC90ZXh0Pg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSIxMzIuMyI+5Zu+54mHPC90ZXh0Pg0KPC9zdmc+DQo=";function initUI(){const e=Object.keys(BPlist);let t="";for(let n=0;n<e.length;n++)t+=`<button style="margin: 5px;" onclick="loadBP('${e[n]}')">${e[n]}</button>`;document.getElementById("标题").innerHTML=t,loadBP(e[0])}function loadBP(e){let t=`<div class="card_title">${e}戴森球蓝图</div>`;const n=BPlist[e];n.forEach(e=>{const{name:n,data:o,img:i,memo:s}=e;t+=`<div class="card"><div style="margin:auto;">${n} <button onclick="cvBP('${n}')">复制</button></div><img src="${i||NoneImg}" width="150" height="150"><textarea class="card_data" id="${n}" readonly>${o}</textarea>`,s&&(t+=`<div class="Memo">${s}</div>`),t+="</div>"}),t+='<div class="Memo">"""
+            HTML3=r"""</div>',document.getElementById("蓝图").innerHTML=t}async function cvBP(e){try{const t=document.getElementById(e).value;await navigator.clipboard.writeText(t),alert("蓝图已复制到剪贴板")}catch(e){alert(`复制失败，请手动复制：\n`+e.message)}}initUI()</script></body></html>"""
+            html = HTML1 + json.dumps(self._蓝图库) + HTML2 + name + HTML3
 
             with open(路径, "w", encoding="utf-8") as f:
                 f.write(html)

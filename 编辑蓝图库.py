@@ -16,6 +16,7 @@ class 蓝图库编辑器(tk.Tk):
         self._当前蓝图索引 = None
         self._输入的图片 = None
         self._预览图片缓存 = None
+        self._数据是否未保存 = False
 
         ttk.Button(self, takefocus=0)
         self.样式 = ttk.Style()
@@ -45,17 +46,21 @@ class 蓝图库编辑器(tk.Tk):
         self.分类项框架 = ttk.Frame(self.分类框架)
         self.分类项框架.pack(fill=tk.X, padx=5, pady=3)
         self.类选项框架 = ttk.Frame(self.分类框架)
-        self.类选项框架.pack(fill=tk.X, padx=5,pady=(20, 3))
-        self.添加类按钮 = ttk.Button(self.类选项框架, text="添加分类", width=8, command=self.添加蓝图分类)
-        self.添加类按钮.grid(row=0, column=0, columnspan=2, pady=2)
+        self.类选项框架.pack(fill=tk.X, padx=5,pady=(10, 3))
         self.删除类按钮 = ttk.Button(self.类选项框架, text="删除分类", width=8, command=self.删除蓝图分类)
-        self.删除类按钮.grid(row=0, column=2, columnspan=2, pady=2)
-        self.添加类按钮 = ttk.Button(self.类选项框架, text="⬆️", width=3, command=lambda: self.排序分类(-1))
-        self.添加类按钮.grid(row=1, column=0, pady=2)
-        self.删除类按钮 = ttk.Button(self.类选项框架, text="⬇️", width=3, command=lambda: self.排序分类(1))
-        self.删除类按钮.grid(row=1, column=1,pady=2)
+        self.删除类按钮.grid(row=0, column=0, columnspan=2, pady=2)
+        self.增序类按钮 = ttk.Button(self.类选项框架, text="⬆️", width=3, command=lambda: self.排序分类(-1))
+        self.增序类按钮.grid(row=0, column=2, pady=2)
+        self.降序类按钮 = ttk.Button(self.类选项框架, text="⬇️", width=3, command=lambda: self.排序分类(1))
+        self.降序类按钮.grid(row=0, column=3,pady=2)
+        self.添加类按钮 = ttk.Button(self.类选项框架, text="添加分类", width=8, command=self.添加蓝图分类)
+        self.添加类按钮.grid(row=1, column=0, columnspan=2, pady=2)
         self.修改类名按钮 = ttk.Button(self.类选项框架, text="修改类名", width=8, command=self.更名分类)
         self.修改类名按钮.grid(row=1, column=2, columnspan=2, pady=2)
+        self.移动蓝图按钮 = ttk.Button(self.类选项框架, text="移动蓝图", width=8, command=self.移动蓝图)
+        self.移动蓝图按钮.grid(row=2, column=0, columnspan=2, pady=2)
+        self.批量导入按钮 = ttk.Button(self.类选项框架, text="批量导入", width=8, command=self.批量导入蓝图)
+        self.批量导入按钮.grid(row=2, column=2, columnspan=2, pady=2)
         
         self.蓝图列表框架 = ttk.LabelFrame(self.主框架, text="蓝图列表 - 未选择分类")
         self.蓝图列表框架.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
@@ -75,14 +80,14 @@ class 蓝图库编辑器(tk.Tk):
         self.下移.grid(row=0, column=3, padx=2)
 
 
-        self.名称标签 = ttk.Label(self.编辑区框架, text="蓝图名:")
+        self.名称标签 = ttk.Label(self.编辑区框架, text="*蓝图名:")
         self.名称标签.grid(row=1, column=0, padx=8, pady=8, sticky=tk.W)
         self.名称输入框 = ttk.Entry(self.编辑区框架, width=30)
         self.名称输入框.grid(row=1, column=1, padx=8, pady=8, sticky=tk.W)
         self.导入蓝图按钮 = ttk.Button(self.编辑区框架, text="导入蓝图文件", command=self.导入蓝图文件)
         self.导入蓝图按钮.grid(row=1, column=2, columnspan=2, padx=2, sticky=tk.W)
 
-        self.蓝图代码标签 = ttk.Label(self.编辑区框架, text="蓝图代码:")
+        self.蓝图代码标签 = ttk.Label(self.编辑区框架, text="*蓝图代码:")
         self.蓝图代码标签.grid(row=2, column=0, padx=8, pady=8, sticky=tk.NW)
         self.代码输入框 = tk.Text(self.编辑区框架, width=30, height=1, wrap="none")
         self.代码输入框.grid(row=2, column=1, sticky="nsew",padx=8, pady=8)
@@ -92,7 +97,7 @@ class 蓝图库编辑器(tk.Tk):
         self.复制按钮 = ttk.Button(self.编辑区框架, text="复制代码", command=self.复制蓝图代码)
         self.复制按钮.grid(row=2, column=2, columnspan=2, padx=2, sticky=tk.W)
 
-        self.图片预览标签 = ttk.Label(self.编辑区框架, text="*蓝图图片:")
+        self.图片预览标签 = ttk.Label(self.编辑区框架, text="蓝图图片:")
         self.图片预览标签.grid(row=3, column=0, padx=8, pady=8, sticky=tk.NW)
         self.预览画布 = tk.Canvas(self.编辑区框架, width=160, height=160, bg="#f5f5f5", bd=1, relief="solid")
         self.预览画布.grid(row=3, column=1, padx=8, pady=8)
@@ -103,7 +108,7 @@ class 蓝图库编辑器(tk.Tk):
         self.删除图片按钮 = ttk.Button(self.图片编辑框架, text="删除图片", command=self.删除图片)
         self.删除图片按钮.grid(padx=2, sticky=tk.W)
 
-        self.备注标签 = ttk.Label(self.编辑区框架, text="*蓝图备注:")
+        self.备注标签 = ttk.Label(self.编辑区框架, text="蓝图备注:")
         self.备注标签.grid(row=4, column=0, padx=8, pady=8, sticky=tk.W)
         self.备注输入框 = ttk.Entry(self.编辑区框架, width=40)
         self.备注输入框.grid(row=4, column=1, columnspan=3, padx=8, pady=8, sticky=tk.W)
@@ -114,12 +119,25 @@ class 蓝图库编辑器(tk.Tk):
         self.保存按钮.pack(side=tk.LEFT, padx=2)
         self.删除按钮 = ttk.Button(self.按钮框架, text="删除蓝图", command=self.删除蓝图)
         self.删除按钮.pack(side=tk.LEFT, padx=2)
-        self.移动按钮 = ttk.Button(self.按钮框架, text="移动蓝图", command=self.移动蓝图)
-        self.移动按钮.pack(side=tk.LEFT, padx=2)
-        self.批量导入按钮 = ttk.Button(self.按钮框架, text="批量导入",command=self.批量导入蓝图)
-        self.批量导入按钮.pack(side=tk.LEFT, padx=2)
+
+        self.protocol("WM_DELETE_WINDOW", self.关闭窗口)
         
         self.加载默认数据()
+
+    
+    def 关闭窗口(self):
+        if self._数据是否未保存:
+            result = messagebox.askyesnocancel(
+            title="保存提示",
+            message="蓝图库未保存，是否保存为JSON？",
+            #detail="选择“是”保存，“否”不保存，“取消”取消关闭"
+            )
+            if result is None:
+                return
+            if result:
+                self.导出JSON()
+        self.destroy()
+
 
     def 自动全选(self,event):
         event.widget.tag_add(tk.SEL, "1.0", tk.END)
@@ -388,7 +406,8 @@ class 蓝图库编辑器(tk.Tk):
             self._当前蓝图索引 = len(self._蓝图库[self._当前类型]) -1
         else:
             self._蓝图库[self._当前类型][self._当前蓝图索引] = 新数据
-            
+            self._数据是否未保存 = True
+       
         self.刷新蓝图列表()
         self.通知(f'{新数据["name"]} 已保存')
 
@@ -400,6 +419,8 @@ class 蓝图库编辑器(tk.Tk):
             return
         垃圾 = self._蓝图库[self._当前类型].pop(self._当前蓝图索引)
         self._当前蓝图索引 = None
+        self._数据是否未保存 = True
+
         self.刷新蓝图列表()
         self.通知(f'{垃圾['name']} 已删除')
         
@@ -413,6 +434,7 @@ class 蓝图库编辑器(tk.Tk):
         蓝图数据 = self._蓝图库[self._当前类型].pop(self._当前蓝图索引)
         self._蓝图库[self._当前类型].insert(目标, 蓝图数据)
         self._当前蓝图索引 = 目标
+        self._数据是否未保存 = True
 
         self.刷新蓝图列表()
         self.通知('排序蓝图')
@@ -432,6 +454,7 @@ class 蓝图库编辑器(tk.Tk):
             return
 
         self._蓝图库[新类名] = []
+        self._数据是否未保存 = True
         self.刷新页面()
         self.选择蓝图类型(新类名)
         self.通知(f'已添加 {新类名} 分类')
@@ -446,9 +469,9 @@ class 蓝图库编辑器(tk.Tk):
         if not messagebox.askyesno("确认", f"确定删除 ‘{self._当前类型}’ 吗？"):
             return
         self._蓝图库.pop(self._当前类型)
+        self._数据是否未保存 = True
         self.通知(f'已删除 {self._当前类型} 分类')
         self.刷新页面()
-
 
     def 更名分类(self):
         if self._当前类型 == None:
@@ -468,6 +491,7 @@ class 蓝图库编辑器(tk.Tk):
             messagebox.showwarning("警告","不可输入相同的类名")
             return
         self._蓝图库[新类名] = self._蓝图库.pop(self._当前类型)
+        self._数据是否未保存 = True
         self.通知(f'已将 {self._当前类型} 更名为 {新类名}')
         self.刷新页面()
         self.选择蓝图类型(新类名)
@@ -486,12 +510,16 @@ class 蓝图库编辑器(tk.Tk):
             return
         蓝图列表.insert(目标, 蓝图列表.pop(索引))
         self._蓝图库 = dict(蓝图列表)
+        self._数据是否未保存 = True
 
         self.刷新页面()
         self.选择蓝图类型(类型)
         self.通知('排序蓝图类型')
 
     def 导入JSON(self):
+        if self._数据是否未保存:
+            if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
+                return
         try:
             路径 = filedialog.askopenfilename(initialdir=".",filetypes=[("*.json","*.json")],title="导入JSON文件")
             if not 路径: return
@@ -501,6 +529,7 @@ class 蓝图库编辑器(tk.Tk):
                     messagebox.showwarning("警告","JSON格式错误")
                     return
             self._蓝图库 = 导入的数据
+            self._数据是否未保存 = False
             self.刷新页面()
             self.选择蓝图类型(next(iter(self._蓝图库)))
             messagebox.showinfo("成功", "导入完成")
@@ -514,6 +543,7 @@ class 蓝图库编辑器(tk.Tk):
             if not 路径: return
             with open(路径,"w",encoding="utf-8") as f:
                 json.dump(self._蓝图库, f, ensure_ascii=False, indent=4)
+            self._数据是否未保存 = False
             messagebox.showinfo("成功", "导出完成")
             self.通知('导出JSON')
         except Exception:
@@ -553,8 +583,8 @@ class 蓝图库编辑器(tk.Tk):
                 self._蓝图库[self._当前类型].pop(索引)
             
             原类型 = self._当前类型
-
             self.写入数据(选中项.get(),蓝图列表)
+            self._数据是否未保存 = True
             self.刷新页面()
             self.选择蓝图类型(选中项.get())
             self.通知(f'将蓝图从 {原类型} 移动到 {选中项.get()}')
@@ -640,9 +670,10 @@ class 蓝图库编辑器(tk.Tk):
             self._蓝图库.setdefault(目标,[])
 
             self.写入数据(目标,蓝图数据列表)
-            self.通知(f'已将蓝图批量导入到 {目标}')
+            self._数据是否未保存 = True
             self.刷新页面()
             self.选择蓝图类型(目标)
+            self.通知(f'已将蓝图批量导入到 {目标}')
             窗口.destroy()
 
         def 取消操作():
@@ -665,7 +696,7 @@ class 蓝图库编辑器(tk.Tk):
         导入同名图片 = tk.IntVar()
         导入当前分类 = tk.IntVar()
         ttk.Checkbutton(窗口, text="导入同名图片", variable=导入同名图片).pack(padx=15, fill=tk.X)
-        ttk.Checkbutton(窗口, text="导入到当前分类，如果有选择分类的话", variable=导入当前分类).pack(padx=15, fill=tk.X)
+        ttk.Checkbutton(窗口, text="导入到当前分类，如果已选择分类的话", variable=导入当前分类).pack(padx=15, fill=tk.X)
 
         列表框架 = ttk.Frame(窗口)
         列表框架.pack(padx=15, fill=tk.BOTH,expand=True)

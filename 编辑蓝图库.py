@@ -334,6 +334,7 @@ class 蓝图库编辑器(tk.Tk):
     def 排序分类(self, 步):
         类型 = self.当前类型
         if 类型 == None:
+            self.通知('未选择分类')
             return
         
         蓝图列表 = list(self.蓝图库.items())
@@ -353,6 +354,7 @@ class 蓝图库编辑器(tk.Tk):
     
     def 排序蓝图(self,步):
         if self.当前类型 == None or self.当前蓝图索引 == None:
+            self.通知('未选择蓝图')
             return
         if self.获取数据(self.当前类型, self.当前蓝图索引).get('lock', 0):
             self.通知('该蓝图不可移动')
@@ -883,28 +885,30 @@ class 蓝图库编辑器(tk.Tk):
                 if not os.path.exists(分类路径):
                     os.makedirs(分类路径)
                 
-                for 索引, 蓝图数据 in enumerate(self.获取数据(分类名)):
-                    名字 = f"【{索引+1}】{蓝图数据['name']}"
+                for 蓝图数据 in self.获取数据(分类名):
+                    名字 = f"{蓝图数据['name']}"
                     蓝图文件路径 = os.path.join(分类路径, 名字 + ".txt")
                     
                     with open(蓝图文件路径, "w", encoding="utf-8") as f:
                         f.write(蓝图数据["data"].strip())
-
-                    if "img" in 蓝图数据 and 蓝图数据["img"].strip():
-                        img_prefix,img_base64 = 蓝图数据["img"].split(",")
-                        img_ext = "png"
-                        if "image/jpeg" in img_prefix or "image/jpg" in img_prefix:
-                            img_ext = "jpg"
-                        elif "image/png" in img_prefix:
+                    try:
+                        if "img" in 蓝图数据 and 蓝图数据["img"].strip():
+                            img_prefix,img_base64 = 蓝图数据["img"].split(",")
                             img_ext = "png"
-                        elif "image/svg+xml" in img_prefix:
-                            img_ext = "svg"
-                        图片路径 = os.path.join(分类路径, f"{名字}.{img_ext}")
+                            if "image/jpeg" in img_prefix or "image/jpg" in img_prefix:
+                                img_ext = "jpg"
+                            elif "image/png" in img_prefix:
+                                img_ext = "png"
+                            elif "image/svg+xml" in img_prefix:
+                                img_ext = "svg"
+                            图片路径 = os.path.join(分类路径, f"{名字}.{img_ext}")
 
-                        img_data = base64.b64decode(img_base64)
-                        with open(图片路径, "wb") as img_file:
-                            img_file.write(img_data)
-            
+                            img_data = base64.b64decode(img_base64)
+                            with open(图片路径, "wb") as img_file:
+                                img_file.write(img_data)
+                    except:
+                        continue
+
             messagebox.showinfo("成功", f"所有蓝图已导出到：\n{根目录}")
             self.通知(f'导出文件夹完成：{根目录}')
         except Exception as e:

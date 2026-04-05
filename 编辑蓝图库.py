@@ -14,7 +14,7 @@ class 蓝图库编辑器(tk.Tk):
         super().__init__()
         self.title("戴森球计划球体蓝图库：by氢碳钾")
         self.geometry("900x600")
-        self.minsize(800, 500)
+        self.minsize(840, 560)
         self.name = ""
 
         self.蓝图库 = {}
@@ -76,6 +76,8 @@ class 蓝图库编辑器(tk.Tk):
         self.下移.pack(side=tk.LEFT, padx=1)
         self.新建蓝图按钮 = ttk.Button(self.蓝图列表操作框架, text="+",width=2,command=self.新建蓝图)
         self.新建蓝图按钮.pack(side=tk.LEFT, padx=1)
+        self.删除蓝图按钮 = ttk.Button(self.蓝图列表操作框架, text="🗑", width=2, command=lambda: self.删除蓝图(True))
+        self.删除蓝图按钮.pack(side=tk.LEFT, padx=1)
         self.移动蓝图按钮 = ttk.Button(self.蓝图列表操作框架, text="移动", width=4, command=lambda: self.批量操作窗口('移动'))
         self.移动蓝图按钮.pack(side=tk.LEFT, padx=1)
         self.批量删除按钮 = ttk.Button(self.蓝图列表操作框架, text="删除", width=4, command=lambda: self.批量操作窗口('删除'))
@@ -83,7 +85,7 @@ class 蓝图库编辑器(tk.Tk):
 
         self.滚动条 = tk.Scrollbar(self.蓝图列表框架)
         self.滚动条.pack(side=tk.RIGHT, fill=tk.Y)
-        self.蓝图列表 = tk.Listbox(self.蓝图列表框架, width=22, height=20, exportselection=False, yscrollcommand=self.滚动条.set)
+        self.蓝图列表 = tk.Listbox(self.蓝图列表框架, width=26, height=20, exportselection=False, yscrollcommand=self.滚动条.set)
         self.蓝图列表.pack(fill=tk.BOTH, expand=True, padx=5, pady=(1, 5))
         self.滚动条.config(command=self.蓝图列表.yview)
         self.蓝图列表.bind('<<ListboxSelect>>', self.选中蓝图)
@@ -339,6 +341,7 @@ class 蓝图库编辑器(tk.Tk):
         目标 = 索引 + 步
 
         if 目标 < 0 or 目标 == len(蓝图列表):
+            self.通知('已到顶了' if 步 < 0 else '已到底了')
             return
         蓝图列表.insert(目标, 蓝图列表.pop(索引))
         self.蓝图库 = dict(蓝图列表)
@@ -351,8 +354,15 @@ class 蓝图库编辑器(tk.Tk):
     def 排序蓝图(self,步):
         if self.当前类型 == None or self.当前蓝图索引 == None:
             return
+        if self.获取数据(self.当前类型, self.当前蓝图索引).get('lock', 0):
+            self.通知('该蓝图不可移动')
+            return
         目标 = self.当前蓝图索引 + 步
         if 目标 < 0 or 目标 == len(self.获取数据(self.当前类型)):
+            self.通知('已到顶了' if 步 < 0 else '已到底了')
+            return
+        if self.获取数据(self.当前类型, 目标).get('lock', 0):
+            self.通知('目标位置蓝图不可移动')
             return
         
         self.添加数据(self.当前类型, self.移出数据(self.当前类型, self.当前蓝图索引), 目标)
@@ -512,12 +522,19 @@ class 蓝图库编辑器(tk.Tk):
         if self.当前类型 == None:
             messagebox.showwarning("警告", "未选择蓝图类型")
             return
-        名字列表 = [名["name"] for 名 in self.获取数据(self.当前类型)]
+        蓝图列表 = self.获取数据(self.当前类型)
         新数据 = {
-            "name": self.添加序号("新蓝图",名字列表),
+            "name": self.添加序号("新蓝图",[名["name"] for 名 in 蓝图列表]),
             "data": ""
         }
-        索引 = self.当前蓝图索引 + 1 if self.当前蓝图索引 != None else len(self.获取数据(self.当前类型))
+        if self.当前蓝图索引 != None:
+            if self.当前蓝图索引+1 < len(蓝图列表) and 蓝图列表[self.当前蓝图索引+1].get('lock', 0):
+                索引 = len(蓝图列表)
+            else:
+                索引 = self.当前蓝图索引 + 1
+        else:
+            索引 = len(蓝图列表)
+
         self.添加数据(self.当前类型, 新数据, 索引)
         self.当前蓝图索引 = 索引
         self.刷新蓝图列表()
@@ -563,14 +580,17 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新蓝图列表()
         self.通知(f'{新数据["name"]} 已保存')
 
-    def 删除蓝图(self):
+    def 删除蓝图(self,快速删除=False):
+        if self.当前类型 == None or self.当前蓝图索引 == None:
+            if not 快速删除:
+                messagebox.showwarning("警告", "请先选择蓝图")
+            else:
+                self.通知('请先选择蓝图')
+            return
         if self._当前蓝图是否锁定:
             self.通知('该蓝图不可删除')
             return
-        if self.当前类型 == None or self.当前蓝图索引 == None:
-            messagebox.showwarning("警告", "请先选择蓝图")
-            return
-        if not messagebox.askyesno("确认", "确定删除？"):
+        if not 快速删除 and not messagebox.askyesno("确认", "确定删除？"):
             return
         垃圾 = self.移出数据(self.当前类型, self.当前蓝图索引)
         self.当前蓝图索引 = None
@@ -691,8 +711,8 @@ class 蓝图库编辑器(tk.Tk):
 
             with open(路径, "w", encoding="utf-8") as f:
                 f.write(html)
-            messagebox.showinfo("成功", "导出完成")
-            self.通知('导出HTML')
+            if messagebox.askyesno("导出完成", "导出完成，是否打开HTML文件？"):
+                os.startfile(路径)
         except Exception as e:
             messagebox.showerror("错误",f"文件导出失败：\n{str(e)}")
 
@@ -863,8 +883,9 @@ class 蓝图库编辑器(tk.Tk):
                 if not os.path.exists(分类路径):
                     os.makedirs(分类路径)
                 
-                for 蓝图数据 in self.获取数据(分类名):
-                    蓝图文件路径 = os.path.join(分类路径, 蓝图数据["name"] + ".txt")
+                for 索引, 蓝图数据 in enumerate(self.获取数据(分类名)):
+                    名字 = f"【{索引+1}】{蓝图数据['name']}"
+                    蓝图文件路径 = os.path.join(分类路径, 名字 + ".txt")
                     
                     with open(蓝图文件路径, "w", encoding="utf-8") as f:
                         f.write(蓝图数据["data"].strip())
@@ -878,10 +899,10 @@ class 蓝图库编辑器(tk.Tk):
                             img_ext = "png"
                         elif "image/svg+xml" in img_prefix:
                             img_ext = "svg"
-                        img_path = os.path.join(分类路径, f"{蓝图数据['name']}.{img_ext}")
+                        图片路径 = os.path.join(分类路径, f"{名字}.{img_ext}")
 
                         img_data = base64.b64decode(img_base64)
-                        with open(img_path, "wb") as img_file:
+                        with open(图片路径, "wb") as img_file:
                             img_file.write(img_data)
             
             messagebox.showinfo("成功", f"所有蓝图已导出到：\n{根目录}")

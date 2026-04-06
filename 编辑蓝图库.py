@@ -358,49 +358,18 @@ class 蓝图库编辑器(tk.Tk):
         elif 模式 == '修改':
             self.蓝图库[蓝图类型] = 蓝图列表
             self._数据是否未保存 = True
-
-    def 排序分类(self, 步):
-        类型 = self.当前类型
-        if 类型 == None:
-            self.通知('未选择分类')
-            return
         
+    def 移动分类(self,蓝图类型,步):
         蓝图列表 = list(self.蓝图库.items())
-        索引 = [k[0] for k in 蓝图列表].index(类型)
+        索引 = [k[0] for k in 蓝图列表].index(蓝图类型)
         目标 = 索引 + 步
-
         if 目标 < 0 or 目标 == len(蓝图列表):
-            self.通知('已到顶了' if 步 < 0 else '已到底了')
-            return
+            return False
         蓝图列表.insert(目标, 蓝图列表.pop(索引))
         self.蓝图库 = dict(蓝图列表)
         self._数据是否未保存 = True
+        return True
 
-        self.刷新页面()
-        self.选择蓝图类型(类型)
-        self.通知('排序蓝图类型')
-    
-    def 排序蓝图(self,步):
-        if self.当前类型 == None or self.当前蓝图索引 == None:
-            self.通知('未选择蓝图')
-            return
-        if self.获取数据(self.当前类型, self.当前蓝图索引).get('lock', 0):
-            self.通知('该蓝图不可移动')
-            return
-        目标 = self.当前蓝图索引 + 步
-        if 目标 < 0 or 目标 == len(self.获取数据(self.当前类型)):
-            self.通知('已到顶了' if 步 < 0 else '已到底了')
-            return
-        if self.获取数据(self.当前类型, 目标).get('lock', 0):
-            self.通知('目标位置蓝图不可移动')
-            return
-        
-        self.添加数据(self.当前类型, self.移出数据(self.当前类型, self.当前蓝图索引), 目标)
-        self.当前蓝图索引 = 目标
-        self._数据是否未保存 = True
-
-        self.刷新蓝图列表()
-        self.通知('排序蓝图')
 
     def 校验蓝图代码(self,蓝图代码):
         return bool(self.匹配蓝图代码.match(蓝图代码.strip()))
@@ -626,6 +595,39 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新蓝图列表()
         self.通知(f'{垃圾["name"]} 已删除')
 
+    def 排序蓝图(self,步):
+        if self.当前类型 == None or self.当前蓝图索引 == None:
+            self.通知('未选择蓝图')
+            return
+        if self.获取数据(self.当前类型, self.当前蓝图索引).get('lock', 0):
+            self.通知('该蓝图不可移动')
+            return
+        目标 = self.当前蓝图索引 + 步
+        if 目标 < 0 or 目标 == len(self.获取数据(self.当前类型)):
+            self.通知('已到顶了' if 步 < 0 else '已到底了')
+            return
+        if self.获取数据(self.当前类型, 目标).get('lock', 0):
+            self.通知('目标位置蓝图不可移动')
+            return
+        
+        self.添加数据(self.当前类型, self.移出数据(self.当前类型, self.当前蓝图索引), 目标)
+        self.当前蓝图索引 = 目标
+        self.刷新蓝图列表()
+        self.通知('排序蓝图')
+    
+    def 排序分类(self, 步):
+        类型 = self.当前类型
+        if 类型 == None:
+            self.通知('未选择分类')
+            return
+        
+        if not self.移动分类(self.当前类型,步):
+            self.通知('已到顶了' if 步 < 0 else '已到底了')
+            return
+        self.刷新页面()
+        self.选择蓝图类型(类型)
+        self.通知('排序蓝图类型')
+
     def 添加蓝图分类(self):
         新类名 = simpledialog.askstring("输入", "请输入2~8个字符：")
         if not 新类名: return
@@ -742,6 +744,9 @@ class 蓝图库编辑器(tk.Tk):
             messagebox.showerror("错误",f"文件导出失败：\n{str(e)}")
     
     def 导入HTML(self):
+        if self._数据是否未保存:
+            if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
+                return
         try:
             路径 = filedialog.askopenfilename(initialdir=".",filetypes=[("HTML","*.html")],title="导入HTML文件")
             if not 路径: return
@@ -756,6 +761,7 @@ class 蓝图库编辑器(tk.Tk):
                 return messagebox.showwarning("警告","该HTML蓝图库格式不正确")
 
             self.蓝图库 = 导入的数据
+            self._数据是否未保存 = False
             self.刷新页面()
             self.选择蓝图类型(self.获取类表()[0])
             messagebox.showinfo("成功", "导入完成")
@@ -764,16 +770,15 @@ class 蓝图库编辑器(tk.Tk):
         except Exception as e:
             messagebox.showerror("错误",f"文件入失败：\n{str(e)}")
 
-    def 批量操作窗口(self,操作类型):
+    def 批量操作窗口(self,操作):
         允许值 = {'移动', '删除','导入'}
         蓝图数据列表 = []
         # 初始校验
-        if 操作类型 not in 允许值:
+        if 操作 not in 允许值:
             raise ValueError(f"操作类型只能是：{允许值}")
-        if 操作类型 in ('移动','删除') and self.当前类型 == None:
-            messagebox.showwarning("警告", "未选择蓝图类型")
-            return
-        if 操作类型 == '导入':
+        if 操作 in ('移动','删除') and self.当前类型 == None:
+            return messagebox.showwarning("警告", "未选择蓝图类型")
+        if 操作 == '导入':
             try:
                 文件夹路径 = filedialog.askdirectory(initialdir=".",title="请选择蓝图文件夹")
                 if not 文件夹路径:return
@@ -788,27 +793,23 @@ class 蓝图库编辑器(tk.Tk):
                             "data": 文件内容
                             })
             except Exception as e:
-                messagebox.showerror("错误", f"文件夹读取失败：\n{str(e)}")
+                return messagebox.showerror("错误", f"文件夹读取失败：\n{str(e)}")
             if not 蓝图数据列表:
-                messagebox.showinfo("提示", "该文件夹下未找到蓝图.txt文件！")
-                return
+                return messagebox.showinfo("提示", "该文件夹下未找到蓝图.txt文件！")
 
         def 确认操作():
             nonlocal 蓝图数据列表
             # 操作前校验
-            if not 列表框.curselection() and 操作类型 in ('移动','删除'):
-                messagebox.showwarning("警告", "请至少选择一个蓝图")
-                return
-            if 操作类型 == '移动' and not 选中项.get():
-                messagebox.showwarning("警告", "请选择移动的目标目录")
-                return
-            if 操作类型 == '删除' and not messagebox.askyesno("确认", "确定删除选中的蓝图吗？"):
+            if 操作 in ('移动','删除') and not 列表框.curselection():
+                return messagebox.showwarning("警告", "请至少选择一个蓝图")
+            if 操作 == '移动' and not 选中项.get():
+                return messagebox.showwarning("警告", "请选择移动的目标目录")
+            if 操作 == '删除' and not messagebox.askyesno("确认", "确定删除选中的蓝图吗？"):
                 return
             
             # 操作数据
-            if 操作类型 == '导入':
+            if 操作 == '导入':
                 if 导入同名图片.get():
-                    nonlocal 文件夹路径
                     for 索引, 蓝图 in enumerate(蓝图数据列表):
                         for 文件名 in os.listdir(文件夹路径):
                             名字, 后缀 = os.path.splitext(文件名)
@@ -824,25 +825,25 @@ class 蓝图库编辑器(tk.Tk):
                     目标 = self.添加序号(类名,类型列表)
                 else:
                     目标 = 类名
-            elif 操作类型 in ('移动','删除'):
-                索引列表 = [展示列表[i][0] for i in 列表框.curselection()]
+            elif 操作 in ('移动','删除'):
+                索引列表 = [索引对照表[i][0] for i in 列表框.curselection()]
                 # 逆序删除，避免索引错乱
                 for 索引 in sorted(索引列表, reverse=True):
                     蓝图数据列表.append(self.移出数据(self.当前类型, 索引))
-            if 操作类型 == '移动':
+            if 操作 == '移动':
                 蓝图数据列表.reverse()  # 恢复原顺序
                 原类型 = self.当前类型
                 目标 = 选中项.get()
-            if 操作类型 in ('移动','导入'):
+            if 操作 in ('移动','导入'):
                 self.列表写入(目标,蓝图数据列表)
                 选择 = 目标
 
             # 生成消息
-            if 操作类型 == '移动':
+            if 操作 == '移动':
                 消息 =f'将{len(蓝图数据列表)}个蓝图从 {原类型} 移动到 {选中项.get()}'
-            elif 操作类型 == '导入':
+            elif 操作 == '导入':
                 消息 =f'已将{len(蓝图数据列表)}个蓝图导入到 {目标}'
-            elif 操作类型 == '删除':
+            elif 操作 == '删除':
                 选择 = self.当前类型
                 消息 =f'已删除{len(蓝图数据列表)}个蓝图'
             
@@ -859,7 +860,7 @@ class 蓝图库编辑器(tk.Tk):
         窗口.resizable(False, False)  # 禁止缩放
 
         # 初始化界面
-        if 操作类型 == '移动':
+        if 操作 == '移动':
             窗口.title("移动蓝图")
             选项框架 = ttk.Frame(窗口)
             选项框架.pack(padx=15, fill=tk.X)
@@ -873,19 +874,18 @@ class 蓝图库编辑器(tk.Tk):
             )
             选项.pack(side=tk.LEFT,)
             选项.configure(height=5)
+            tk.Label(窗口, text="鼠标拖动或按住Ctrl/Shift多选", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
 
-        elif 操作类型 == '删除':
+        elif 操作 == '删除':
             窗口.title("删除蓝图")
+            tk.Label(窗口, text="鼠标拖动或按住Ctrl/Shift多选", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
 
-        elif 操作类型 == '导入':
+        elif 操作 == '导入':
             窗口.title("批量导入")
             导入同名图片 = tk.IntVar(value=1)
             导入当前分类 = tk.IntVar(value=0)
             ttk.Checkbutton(窗口, text="导入同名图片", variable=导入同名图片).pack(padx=15, fill=tk.X)
             ttk.Checkbutton(窗口, text="导入到当前分类，如果已选择的话；否则创建新分类", variable=导入当前分类).pack(padx=15, fill=tk.X)
-
-        if 操作类型 in ('移动','删除'):
-            tk.Label(窗口, text="鼠标拖动或按住Ctrl/Shift多选", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
         
         列表框架 = ttk.Frame(窗口)
         列表框架.pack(padx=15, fill=tk.BOTH,expand=True)
@@ -895,7 +895,7 @@ class 蓝图库编辑器(tk.Tk):
         列表框.pack(fill=tk.BOTH, expand=True)
         滚动条.config(command=列表框.yview)
 
-        if 操作类型 in ('移动','导入'):
+        if 操作 in ('移动','导入'):
             tk.Label(窗口, text="如果重名将会自动添加序号", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
 
         按钮框架 = ttk.Frame(窗口)
@@ -904,14 +904,14 @@ class 蓝图库编辑器(tk.Tk):
         ttk.Button(按钮框架, text="取消", command=窗口.destroy).pack(side=tk.LEFT, padx=10)
 
         # 填入内容
-        if 操作类型 in ('移动','删除'):
+        if 操作 in ('移动','删除'):
             列表框.config(selectmode=tk.EXTENDED,exportselection=False)
-            展示列表 = [[索引, 蓝图['name']] for 索引, 蓝图 in enumerate(self.获取数据(self.当前类型)) if not (蓝图.get('lock') == 1)]
-            for 蓝图 in 展示列表:
-                列表框.insert(tk.END,蓝图[1])
-        elif 操作类型 == '导入':
-            for 文件数据 in 蓝图数据列表:
-                列表框.insert(tk.END, 文件数据["name"])
+            索引对照表 = [[索引, 蓝图['name']] for 索引, 蓝图 in enumerate(self.获取数据(self.当前类型)) if not (蓝图.get('lock') == 1)]
+            for 索引, 蓝图名 in 索引对照表:
+                列表框.insert(tk.END,蓝图名)
+        elif 操作 == '导入':
+            for 蓝图数据 in 蓝图数据列表:
+                列表框.insert(tk.END, 蓝图数据["name"])
             列表框.config(state=tk.DISABLED)
 
         窗口.grab_set()

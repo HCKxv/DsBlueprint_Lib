@@ -79,7 +79,7 @@
 <script>
 
 /*存储蓝图数据*/
-const BPlist = {}
+const BPlist = {"实用":[{"name":"演示1","data":"《蓝图代码》"},{"name":"演示2","data":"《蓝图代码》"}],"观赏":[{"name":"演示3","data":"《蓝图代码》"}]}
 /**/
 const NoneImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIj4NCiAgPGRlZnM+DQogICAgPHN0eWxlPg0KICAgICAgLmNscy0xIHsNCiAgICAgICAgZm9udC1zaXplOiA3MHB4Ow0KICAgICAgICBmaWxsOiAjZmZmOw0KICAgICAgICB0ZXh0LWFuY2hvcjogbWlkZGxlOw0KICAgICAgICBmb250LWZhbWlseTogU1RIdXBvOw0KICAgICAgfQ0KICAgIDwvc3R5bGU+DQogIDwvZGVmcz4NCiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzAwMCIvPg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSI1OSI+5pqC5pegPC90ZXh0Pg0KICA8dGV4dCBjbGFzcz0iY2xzLTEiIHg9Ijc1IiB5PSIxMzIuMyI+5Zu+54mHPC90ZXh0Pg0KPC9zdmc+DQo="
 
@@ -104,7 +104,7 @@ function loadBP(bType) {
         if (memo){html += `<div class="Memo">${memo}</div>`};
         html +='</div>';
     });
-    html += `<div class="Memo">${Hname}</div>`;
+    html += `<div class="Memo">by.${Hname}</div>`;
     document.getElementById('蓝图').innerHTML = html;
 }
 

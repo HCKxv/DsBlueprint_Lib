@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox, simpledialog
 import json,os,io,base64,sys
 
 import regex as re
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 
 class 蓝图库编辑器(tk.Tk):
 
@@ -140,6 +140,8 @@ class 蓝图库编辑器(tk.Tk):
         self.预览画布.grid(row=3, column=1, padx=8, pady=8)
         self.图片编辑框架 = ttk.Frame(self.编辑区框架)
         self.图片编辑框架.grid(row=3, column=2, columnspan=2, pady=5)
+        self.粘贴图片按钮 = ttk.Button(self.图片编辑框架, text="粘贴图片", width=10, command=self.粘贴图片)
+        self.粘贴图片按钮.grid(padx=2, sticky=tk.W)
         self.导入图片按钮 = ttk.Button(self.图片编辑框架, text="导入图片",  width=10, command=self.导入图片)
         self.导入图片按钮.grid(padx=2, sticky=tk.W)
         self.删除图片按钮 = ttk.Button(self.图片编辑框架, text="删除图片", width=10, command=self.删除图片)
@@ -441,32 +443,76 @@ class 蓝图库编辑器(tk.Tk):
                     if 字段 not in 蓝图:
                         return False
         return True
+    
+    @staticmethod
+    def 处理图片(图片: Image.Image) -> str:
+        宽度, 高度 = 图片.size
+        
+        if 宽度 != 高度 or 高度 > 154 or 宽度 > 154:
+            最小边 = min(宽度, 高度)
+            左 = (宽度 - 最小边) // 2
+            上 = (高度 - 最小边) // 2
+            右 = 左 + 最小边
+            下 = 上 + 最小边
+            图片 = 图片.crop((左, 上, 右, 下))
+            图片 = 图片.resize((150, 150), Image.Resampling.LANCZOS)
+
+        # 保存到内存并转Base64
+        内存缓冲区 = io.BytesIO()
+        图片.save(内存缓冲区, format="PNG")
+        内存缓冲区.seek(0)
+        base64数据 = base64.b64encode(内存缓冲区.read()).decode("utf-8")
+
+        return f"data:image/png;base64,{base64数据}"
 
     @staticmethod
     def 读取并处理图片(文件路径):
         try:
-            with Image.open(文件路径) as 图片:
-    
-                宽度, 高度 = 图片.size
-                if 宽度 != 高度 or 高度 > 154 or 宽度 > 154:
-                    最小边 = min(宽度, 高度)
-                    左 = (宽度 - 最小边) // 2
-                    上 = (高度 - 最小边) // 2
-                    右 = 左 + 最小边
-                    下 = 上 + 最小边
-                    图片 = 图片.crop((左, 上, 右, 下))
-                    图片 = 图片.resize((150, 150), Image.Resampling.LANCZOS)
-
-                # 保存到内存
-                内存缓冲区 = io.BytesIO()
-                图片.save(内存缓冲区, format="PNG")
-                内存缓冲区.seek(0)
-
-                # 转Base64
-                base64数据 = base64.b64encode(内存缓冲区.read()).decode("utf-8")
-            return [True, f"data:image/png;base64,{base64数据}"]
+            with Image.open(文件路径) as f:
+                图片 = f.copy()
+            
+            DataURI = 蓝图库编辑器.处理图片(图片)
+            return True, DataURI
+            
         except Exception as e:
-            return [False, str(e)]
+            return False, str(e)
+
+    @staticmethod
+    def 从剪贴板获取图片():
+        try:
+            图片 = ImageGrab.grabclipboard()
+            if 图片 is None:
+                return None
+
+            DataURI = 蓝图库编辑器.处理图片(图片)
+            return DataURI
+
+        except Exception as e:
+            print(f"读取剪贴板图片失败: {e}")
+            return None
+    
+    @staticmethod
+    def 判断DataURI类型(URI字符串: str):
+
+        if not URI字符串.startswith('data:'):
+            return None
+        
+        try:
+            头部部分, _ = URI字符串.split(',', 1)
+            头部参数列表 = 头部部分[5:].split(';')
+            if 'base64' not in [参数.strip().lower() for 参数 in 头部参数列表[1:]]:
+                return None
+            媒体类型部分 = 头部参数列表[0].strip()
+            类型映射 = {
+                'image/jpeg': 'jpg',
+                'image/jpg': 'jpg',
+                'image/png': 'png',
+                'image/svg+xml': 'svg'
+            }
+            return 类型映射.get(媒体类型部分)
+
+        except (ValueError, IndexError):
+            return None
         
     @staticmethod
     def 写入图片(文件路径,base64文本):
@@ -549,14 +595,38 @@ class 蓝图库编辑器(tk.Tk):
             return
         try:
             文本 = self.clipboard_get()
-            if not self.校验蓝图代码(文本):
-                self.通知('剪贴板内容不是有效的蓝图代码')
-                return
-            self.代码输入框.delete("1.0", tk.END)
-            self.代码输入框.insert("1.0", 文本)
-            self.通知('已粘贴')
-        except Exception:
+        except tk.TclError:
             self.通知('剪贴板无内容')
+            return
+        if not self.校验蓝图代码(文本):
+            self.通知('剪贴板内容不是有效的蓝图代码')
+            return
+        self.代码输入框.delete("1.0", tk.END)
+        self.代码输入框.insert("1.0", 文本)
+        self.通知('已粘贴')
+
+    def 粘贴图片(self):
+        if self._当前蓝图是否锁定:
+            self.通知('该蓝图不可修改')
+            return
+        文本 = self.从剪贴板获取图片()
+        if 文本:
+            self.图片数据 = 文本
+            self.加载图片预览()
+            self.通知('成功粘贴截图')
+            return
+        try:
+            文本 = self.clipboard_get()
+        except tk.TclError:
+            self.通知('剪贴板无内容')
+            return
+        类型 = self.判断DataURI类型(文本)
+        if 类型 != "svg":
+            self.通知('剪贴板内容不是有效的图片')
+            return
+        self.图片数据 = 文本
+        self.加载图片预览()
+        self.通知('成功导入图片')
 
     def 新建蓝图(self):
         if self.当前类型 == None:
@@ -726,7 +796,6 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新页面()
         self.选择蓝图类型(新类名)
 
-    
     def 新建蓝图库(self):
         if self._数据是否修改:
             if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
@@ -740,7 +809,8 @@ class 蓝图库编辑器(tk.Tk):
             if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
                 return
         try:
-            路径 = filedialog.askopenfilename(initialdir=".",filetypes=[("*.json","*.json")],title="导入JSON文件")
+            初始目录 = self.last_save_json if hasattr(self, "last_save_json") and self.last_save_json else "."
+            路径 = filedialog.askopenfilename(initialdir=初始目录,filetypes=[("*.json","*.json")],title="导入JSON文件")
             if not 路径: return
             内容 = self.读取文件(路径)
             self.载入蓝图库(内容)
@@ -753,7 +823,8 @@ class 蓝图库编辑器(tk.Tk):
 
     def 导出JSON(self):
         try:
-            路径 = filedialog.asksaveasfilename(initialdir=".",defaultextension=".json", filetypes=[("*.json","*.json")],title="导出JSON文件")
+            初始目录 = self.last_save_json if hasattr(self, "last_save_json") and self.last_save_json else "."
+            路径 = filedialog.asksaveasfilename(initialdir=初始目录,defaultextension=".json", filetypes=[("*.json","*.json")],title="导出JSON文件")
             if not 路径: return
             self.写入文件(路径,self.读取蓝图库(2))
             messagebox.showinfo("成功", "导出完成")
@@ -954,17 +1025,11 @@ class 蓝图库编辑器(tk.Tk):
                     self.写入文件(蓝图文件路径,蓝图数据["data"].strip())
                     计数 += 1
                     try:
-                        if "img" in 蓝图数据 and 蓝图数据["img"].strip():
-                            img_prefix,img_base64 = 蓝图数据["img"].split(",")
-                            img_ext = "png"
-                            if "image/jpeg" in img_prefix or "image/jpg" in img_prefix:
-                                img_ext = "jpg"
-                            elif "image/png" in img_prefix:
-                                img_ext = "png"
-                            elif "image/svg+xml" in img_prefix:
-                                img_ext = "svg"
-                            图片路径 = os.path.join(分类路径, f"{名字}.{img_ext}")
-                            self.写入图片(图片路径,img_base64)
+                        图片DataURI = 蓝图数据["img"].strip()
+                        图片类型 = self.判断DataURI类型(图片DataURI)
+                        if 图片类型 in ["png","jpg","svg"]:
+                            图片路径 = os.path.join(分类路径, f"{名字}.{图片类型}")
+                            self.写入图片(图片路径,图片DataURI.split(",")[1])
                     except:continue
 
             messagebox.showinfo("成功", f"{计数}个蓝图已导出到：\n{根目录}")
@@ -987,8 +1052,10 @@ class 蓝图库编辑器(tk.Tk):
     def 保存配置(self):
         try:
             路径 = self.获取配置文件路径()
-            with open(路径, "r", encoding="utf-8") as f:
-                配置 = json.load(f)
+            配置 = {}
+            if os.path.exists(路径):
+                with open(路径, "r", encoding="utf-8") as f:
+                    配置 = json.load(f)
             配置["last_save_json"] = self.last_save_json
             #配置["name"] = self.name
             with open(路径, "w", encoding="utf-8") as f:

@@ -6,6 +6,7 @@ import regex as re
 from PIL import Image, ImageTk, ImageGrab
 
 class 蓝图库编辑器(tk.Tk):
+    版本 = 0.3
 
     匹配HMname = re.compile( r'(Hname\s*=\s*")(.*?)(")')
     匹配HM蓝图库 = re.compile(r'(BPlist\s*=\s*)(\{(?:[^{}]|(?2))*\})')
@@ -24,9 +25,10 @@ class 蓝图库编辑器(tk.Tk):
             self.HTML模板路径 = os.path.join(sys._MEIPASS, self.HTML模板路径)
         
         self.name = ""
-        self.last_save_json = ""
+        self.last_json = ""
+        self.last_dir = ""
 
-        self.蓝图库 = {}
+        self.蓝图库:dict[list[dict]] = {}
 
         self.当前类型 = None # 检查：修改时一同修改蓝图索引
         self.当前蓝图索引 = None
@@ -35,11 +37,10 @@ class 蓝图库编辑器(tk.Tk):
         self._当前蓝图是否锁定 = 0
         self._通知定时 = None
 
-        self.title("戴森球计划球体蓝图库：by氢碳钾")
+        self.title("戴森球计划球体蓝图库")
         self.geometry("900x600")
         self.minsize(850, 500)
 
-        ttk.Button(self, takefocus=0)
         self.样式 = ttk.Style()
         self.样式.configure("Category.TButton", padding=5)
         self.样式.configure("Selected.TButton", background="#4a86e8", padding=5)
@@ -47,20 +48,28 @@ class 蓝图库编辑器(tk.Tk):
         self.顶部框架 = ttk.Frame(self)
         self.顶部框架.pack(fill=tk.X, padx=10, pady=5)
 
-        self.新蓝图库按钮 = ttk.Button(self.顶部框架, text="新建蓝图库", command=self.新建蓝图库)
-        self.新蓝图库按钮.pack(side=tk.LEFT, padx=5)
-        self.导入JSON按钮 = ttk.Button(self.顶部框架, text="加载JSON", command=self.导入JSON)
-        self.导入JSON按钮.pack(side=tk.LEFT, padx=5)
-        self.导入HTML按钮 = ttk.Button(self.顶部框架, text="从HTML导入", command=self.导入HTML)
-        self.导入HTML按钮.pack(side=tk.LEFT, padx=5)
-        self.导出JSON按钮 = ttk.Button(self.顶部框架, text="导出JSON", command=self.导出JSON)
-        self.导出JSON按钮.pack(side=tk.LEFT, padx=5)
-        self.导出HTML按钮 = ttk.Button(self.顶部框架, text="导出为HTML", command=self.导出HTML)
-        self.导出HTML按钮.pack(side=tk.LEFT, padx=5)
-        self.导出文件夹按钮 = ttk.Button(self.顶部框架, text="导出文件夹", command=self.导出文件夹)
-        self.导出文件夹按钮.pack(side=tk.LEFT, padx=5)
-        self.通知窗 = ttk.Label(self.顶部框架, width=50, foreground="#333", relief="solid", padding=2)
+        self.新建按钮 = ttk.Button(self.顶部框架, text="新建", command=self.新建蓝图库)
+        self.新建按钮.pack(side=tk.LEFT, padx=5)
+        self.导入按钮 = ttk.Button(self.顶部框架, text="导入", command=lambda: self.打开菜单(self.导入按钮,self.导入菜单))
+        self.导入按钮.pack(side=tk.LEFT, padx=5)
+        self.导出按钮 = ttk.Button(self.顶部框架, text="导出", command=lambda: self.打开菜单(self.导出按钮,self.导出菜单))
+        self.导出按钮.pack(side=tk.LEFT, padx=5)
+        self.关于按钮 = ttk.Button(self.顶部框架, text="关于", command=self.显示关于信息)
+        self.关于按钮.pack(side=tk.LEFT, padx=5)
+
+        self.通知窗 = ttk.Label(self.顶部框架, width=55, foreground="#333", relief="solid", padding=2)
         self.通知窗.pack(side=tk.RIGHT, padx=5)
+
+        self.导入菜单 = tk.Menu(self, tearoff=0)
+        self.导入菜单.add_command(label="加载JSON", command=self.导入JSON)
+        #self.导入菜单.add_separator()
+        self.导入菜单.add_command(label="从HTML导入", command=self.导入HTML)
+
+        self.导出菜单 = tk.Menu(self, tearoff=0)
+        self.导出菜单.add_command(label="保存JSON", command=self.导出JSON)
+        #self.导出菜单.add_separator()
+        self.导出菜单.add_command(label="导出HTML", command=self.导出HTML)
+        self.导出菜单.add_command(label="导出文件夹", command=self.导出文件夹)
 
         self.主框架 = ttk.Frame(self)
         self.主框架.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -69,18 +78,10 @@ class 蓝图库编辑器(tk.Tk):
         self.分类框架.pack(side=tk.LEFT, fill=tk.Y, padx=5)
         self.分类项框架 = ttk.Frame(self.分类框架)
         self.分类项框架.pack(fill=tk.X, padx=5, pady=3)
-        self.类选项框架 = ttk.Frame(self.分类框架)
-        self.类选项框架.pack(fill=tk.X, padx=5,pady=(10, 3))
-        self.删除类按钮 = ttk.Button(self.类选项框架, text="删除分类", width=8, command=self.删除蓝图分类)
-        self.删除类按钮.grid(row=0, column=0, columnspan=2, pady=2)
-        self.增序类按钮 = ttk.Button(self.类选项框架, text="⬆️", width=3, command=lambda: self.排序分类(-1))
-        self.增序类按钮.grid(row=0, column=2, pady=2)
-        self.降序类按钮 = ttk.Button(self.类选项框架, text="⬇️", width=3, command=lambda: self.排序分类(1))
-        self.降序类按钮.grid(row=0, column=3,pady=2)
-        self.添加类按钮 = ttk.Button(self.类选项框架, text="添加分类", width=8, command=self.添加蓝图分类)
-        self.添加类按钮.grid(row=1, column=0, columnspan=2, pady=2)
-        self.修改类名按钮 = ttk.Button(self.类选项框架, text="修改类名", width=8, command=self.更名分类)
-        self.修改类名按钮.grid(row=1, column=2, columnspan=2, pady=2)
+        self.添加类按钮 = ttk.Button(self.分类框架, text="添加分类", width=8, command=self.添加蓝图分类)
+        self.添加类按钮.pack(fill=tk.X, padx=5,pady=(10, 3))
+        tk.Label(self.分类框架, text="右键更多操作", fg="#999999", anchor="w").pack(fill=tk.X, padx=5)
+        self.分类右键菜单 = tk.Menu(self, tearoff=0)
         
         self.蓝图列表框架 = ttk.LabelFrame(self.主框架, text="蓝图列表 - 未选择分类")
         self.蓝图列表框架.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
@@ -117,16 +118,16 @@ class 蓝图库编辑器(tk.Tk):
         self.编号显示标签.grid(row=0, column=0, columnspan=5, padx=8, pady=8, sticky="n")
 
         self.名称标签 = ttk.Label(self.编辑区框架, text="*蓝图名:")
-        self.名称标签.grid(row=1, column=0, padx=8, pady=8, sticky=tk.W)
+        self.名称标签.grid(row=1, column=0, padx=4, pady=8, sticky=tk.W)
         self.名称输入框 = ttk.Entry(self.编辑区框架, width=30)
-        self.名称输入框.grid(row=1, column=1, padx=8, pady=8, sticky=tk.W)
+        self.名称输入框.grid(row=1, column=1, padx=4, pady=8, sticky=tk.W)
         self.导入蓝图按钮 = ttk.Button(self.编辑区框架, text="导入蓝图", width=10, command=self.导入蓝图文件)
         self.导入蓝图按钮.grid(row=1, column=2, columnspan=2, padx=2, sticky=tk.W)
 
         self.蓝图代码标签 = ttk.Label(self.编辑区框架, text="*蓝图代码:")
-        self.蓝图代码标签.grid(row=2, column=0, padx=8, pady=8, sticky=tk.NW)
+        self.蓝图代码标签.grid(row=2, column=0, padx=4, pady=8, sticky=tk.NW)
         self.代码输入框 = tk.Text(self.编辑区框架, width=30, height=1, wrap="none")
-        self.代码输入框.grid(row=2, column=1, sticky="nsew",padx=8, pady=8)
+        self.代码输入框.grid(row=2, column=1, sticky="nsew",padx=4, pady=8)
         self.代码输入框.bind("<ButtonRelease-1>", self.自动全选)
         for key in ["<Return>", "<Up>", "<Down>", "<Left>", "<Right>"]:
             self.代码输入框.bind(key, self.禁止按键)
@@ -134,38 +135,56 @@ class 蓝图库编辑器(tk.Tk):
         self.复制按钮.grid(row=2, column=2, padx=2, sticky=tk.W)
         self.粘贴按钮 = ttk.Button(self.编辑区框架, text="粘贴", width=4, command=self.粘贴蓝图代码)
         self.粘贴按钮.grid(row=2, column=3, padx=2, sticky=tk.W)
-        self.图片预览标签 = ttk.Label(self.编辑区框架, text="蓝图图片:")
-        self.图片预览标签.grid(row=3, column=0, padx=8, pady=8, sticky=tk.NW)
+        self.图片预览标签 = ttk.Label(self.编辑区框架, text=" 蓝图图片:")
+        self.图片预览标签.grid(row=3, column=0, padx=4, pady=8, sticky=tk.NW)
         self.预览画布 = tk.Canvas(self.编辑区框架, width=160, height=160, bg="#f5f5f5", bd=1, relief="solid")
-        self.预览画布.grid(row=3, column=1, padx=8, pady=8)
+        self.预览画布.grid(row=3, column=1, padx=4, pady=8)
         self.图片编辑框架 = ttk.Frame(self.编辑区框架)
-        self.图片编辑框架.grid(row=3, column=2, columnspan=2, pady=5)
-        self.粘贴图片按钮 = ttk.Button(self.图片编辑框架, text="粘贴图片", width=10, command=self.粘贴图片)
-        self.粘贴图片按钮.grid(padx=2, sticky=tk.W)
+        self.图片编辑框架.grid(row=3, column=2, columnspan=2, pady=8, sticky=tk.W)
+        self.粘贴图片按钮 = ttk.Button(self.图片编辑框架, text="粘贴截图", width=10, command=self.粘贴图片)
+        self.粘贴图片按钮.grid(padx=2, pady=2, sticky=tk.W)
         self.导入图片按钮 = ttk.Button(self.图片编辑框架, text="导入图片",  width=10, command=self.导入图片)
-        self.导入图片按钮.grid(padx=2, sticky=tk.W)
+        self.导入图片按钮.grid(padx=2, pady=2, sticky=tk.W)
         self.删除图片按钮 = ttk.Button(self.图片编辑框架, text="删除图片", width=10, command=self.删除图片)
-        self.删除图片按钮.grid(padx=2, sticky=tk.W)
+        self.删除图片按钮.grid(padx=2, pady=2, sticky=tk.W)
 
-        self.备注标签 = ttk.Label(self.编辑区框架, text="蓝图备注:")
-        self.备注标签.grid(row=4, column=0, padx=8, pady=8, sticky=tk.W)
-        self.备注输入框 = ttk.Entry(self.编辑区框架, width=40)
-        self.备注输入框.grid(row=4, column=1, columnspan=3, padx=8, pady=8, sticky=tk.W)
+        self.备注标签 = ttk.Label(self.编辑区框架, text=" 蓝图备注:")
+        self.备注标签.grid(row=4, column=0, padx=4, pady=8, sticky=tk.W)
+        self.备注输入框 = ttk.Entry(self.编辑区框架, width=42)
+        self.备注输入框.grid(row=4, column=1, columnspan=3, padx=4, pady=8, sticky=tk.W)
         
         self.按钮框架 = ttk.Frame(self.编辑区框架)
-        self.按钮框架.grid(row=5, column=0, columnspan=4, pady=5)
+        self.按钮框架.grid(row=5, column=0, columnspan=4, pady=8)
         self.保存按钮 = ttk.Button(self.按钮框架, text="保存蓝图", command=self.保存蓝图)
         self.保存按钮.pack(side=tk.LEFT, padx=2)
         self.删除按钮 = ttk.Button(self.按钮框架, text="删除蓝图", command=self.删除蓝图)
         self.删除按钮.pack(side=tk.LEFT, padx=2)
 
         self.protocol("WM_DELETE_WINDOW", self.关闭窗口)
+
         self.加载配置()
         self.通知("提示：选择蓝图后Ctrl+C可直接复制蓝图代码",5000)
         self.加载默认数据()
-    
+
 
     # ===========================  ===========================
+    def 显示关于信息(self):
+        messagebox.showinfo(title="关于",message=f"作者：氢碳钾\n版本：{self.版本}")
+
+    def 打开菜单(self, 按钮:tk.Button, 菜单:tk.Menu):
+        x = 按钮.winfo_x()
+        y = 按钮.winfo_y() + 按钮.winfo_height()
+        菜单.post(self.winfo_rootx() + x, self.winfo_rooty() + y)
+
+    def 打开分类右键菜单(self, event:tk.Event, 类型:str):
+        event.widget.focus()
+        self.分类右键菜单.delete(0, tk.END)
+        self.分类右键菜单.add_command(label="上移", command=lambda: self.排序分类(类型,-1))
+        self.分类右键菜单.add_command(label="下移", command=lambda: self.排序分类(类型,1))
+        self.分类右键菜单.add_command(label="改名", command=lambda: self.更名分类(类型))
+        self.分类右键菜单.add_command(label="删除", command=lambda: self.删除蓝图分类(类型))
+        self.分类右键菜单.post(event.x_root, event.y_root)
+
     def 关闭窗口(self):
         if self._数据是否修改:
             result = messagebox.askyesnocancel(
@@ -179,11 +198,11 @@ class 蓝图库编辑器(tk.Tk):
         self.保存配置()
         self.destroy()
 
-    def 自动全选(self,event):
+    def 自动全选(self,event:tk.Event):
         event.widget.tag_add(tk.SEL, "1.0", tk.END)
-    def 禁止按键(self,event):
+    def 禁止按键(self,event:tk.Event):
         return "break"
-    def 快捷键_复制选中蓝图代码(self, event=None):
+    def 快捷键_复制选中蓝图代码(self, event:tk.Event=None):
         if self.当前类型 == None or self.当前蓝图索引 == None:
             self.通知("请选择蓝图")
             return
@@ -200,13 +219,13 @@ class 蓝图库编辑器(tk.Tk):
 
     def 加载默认数据(self):
         try:
-            if self.last_save_json and os.path.exists(self.last_save_json):
-                self.载入蓝图库(self.读取文件(self.last_save_json))
-                self.通知("已加载上次保存的JSON", 10000)
+            if self.last_json and os.path.exists(self.last_json):
+                self.从JSON字符串载入蓝图库(self.读取文件(self.last_json))
+                self.通知("已加载最近使用的 JSON", 10000)
             else:
-                self.载入蓝图库(self.读取文件(self.默认蓝图库路径))
+                self.从JSON字符串载入蓝图库(self.读取文件(self.默认蓝图库路径))
         except Exception:
-            self.载入蓝图库(self.新蓝图库)
+            self.从JSON字符串载入蓝图库(self.新蓝图库)
 
         self.刷新页面()
         self.选择蓝图类型(self.获取类表()[0])
@@ -218,13 +237,15 @@ class 蓝图库编辑器(tk.Tk):
         self.当前蓝图索引 = None
         self.刷新蓝图列表()
 
-        for 控件 in self.分类项框架.winfo_children(): 控件.destroy()
         类型列表 = self.获取类表()
+        for 控件 in self.分类项框架.winfo_children():
+            控件.destroy()
         for 蓝图类型 in 类型列表:
-            按钮 = ttk.Button(self.分类项框架, text=蓝图类型, style="Category.TButton",command=lambda c=蓝图类型: self.选择蓝图类型(c))
+            按钮 = ttk.Button(self.分类项框架, width=15, text=蓝图类型, style="Category.TButton",command=lambda c=蓝图类型: self.选择蓝图类型(c))
+            按钮.bind("<Button-3>", lambda event, c=蓝图类型: self.打开分类右键菜单(event, c))
             按钮.pack(fill=tk.X, padx=5, pady=3)
 
-    def 选择蓝图类型(self, 蓝图类型):
+    def 选择蓝图类型(self, 蓝图类型:str|None):
         self.当前类型 = 蓝图类型
         self.当前蓝图索引 = None
         
@@ -285,15 +306,14 @@ class 蓝图库编辑器(tk.Tk):
             self.备注输入框.config(state="disabled")
 
     def 加载图片预览(self):
+        self.预览画布.delete("all")
         try:
             if not self.图片数据:
-                self.预览画布.delete("all")
                 self.预览画布.create_text(80, 80, text="暂无图片", fill="#999")
                 self._预览图片缓存 = None
                 return
 
             if self.图片数据.startswith("data:image/svg+xml;base64,"):
-                self.预览画布.delete("all")
                 self.预览画布.create_text(80, 80, text="这是svg图片\n导出html可正常显示", fill="#2E8B57")
                 return
 
@@ -304,16 +324,13 @@ class 蓝图库编辑器(tk.Tk):
 
             w = self.预览画布.winfo_width()
             h = self.预览画布.winfo_height()
-            self.预览画布.delete("all")
             self.预览画布.create_image(w / 2, h / 2, image=self._预览图片缓存, anchor="center")
         except base64.binascii.Error:
-            self.预览画布.delete("all")
             self.预览画布.create_text(80, 80, text="图片编码错误", fill="red")
         except Exception as e:
-            self.预览画布.delete("all")
-            self.预览画布.create_text(80, 80, text=f"预览失败：\n{str(e)}", fill="red")
+            self.预览画布.create_text(80, 80, text=f"预览失败：\n{str(e)[:20]}", fill="red")
 
-    def 点击蓝图(self, event):
+    def 点击蓝图(self, event:tk.Event):
         选中 = self.蓝图列表.curselection()
         if not 选中: return
         
@@ -322,7 +339,7 @@ class 蓝图库编辑器(tk.Tk):
             self.蓝图列表.selection_clear(0, tk.END)
         self.刷新编辑区()
     
-    def 通知(self,消息, 延迟时间=3000):
+    def 通知(self,消息:str, 延迟时间:int=3000):
         if self._通知定时:
             self.after_cancel(self._通知定时)
         
@@ -333,51 +350,57 @@ class 蓝图库编辑器(tk.Tk):
 
     # =========================== 数据处理 ===========================
 
-    def 载入蓝图库(self,JSON):
+    def 从JSON字符串载入蓝图库(self, JSON:str):
         数据:dict =json.loads(JSON)
         if not self.检查蓝图库格式(数据):
             raise TypeError("蓝图库格式错误")
         self.蓝图库 = 数据
         self._数据是否修改 = False
     
-    def 读取蓝图库(self,缩进 = None):
-        self._是否修改 = False
+    def 读取蓝图库为JSON字符串(self, 缩进:int|None = None) -> str:
+        self._数据是否修改 = False
         return json.dumps(dict(self.蓝图库) , ensure_ascii=False,indent=缩进)
 
-    def 获取蓝图(self,蓝图类型,蓝图索引):
+    def 获取蓝图(self, 蓝图类型:str, 蓝图索引:int) -> dict:
         return self.蓝图库[蓝图类型][蓝图索引]
     
-    def 获取蓝图列表(self,蓝图类型):
+    def 获取蓝图列表(self,蓝图类型:str) -> list:
         return self.蓝图库[蓝图类型]
     
-    def 添加数据(self,蓝图类型,蓝图数据,蓝图索引=None):
+    def 添加蓝图(self, 蓝图类型:str, 蓝图数据:dict, 蓝图索引:int|None=None):
         if 蓝图索引 == None:
             self.蓝图库[蓝图类型].append(蓝图数据)
         else:
             self.蓝图库[蓝图类型].insert(蓝图索引, 蓝图数据)
         self._数据是否修改 = True
     
-    def 更改数据(self,蓝图类型,新数据,蓝图索引):
+    def 更改蓝图(self, 蓝图类型:str, 新数据:dict, 蓝图索引:int):
         self.蓝图库[蓝图类型][蓝图索引] = 新数据
         self._数据是否修改 = True
     
-    def 移出数据(self,蓝图类型,蓝图索引=None):
+    def 移出数据(self, 蓝图类型:str, 蓝图索引:int|None=None) -> list|dict:
         self._数据是否修改 = True
         if 蓝图索引 == None:
             return self.蓝图库.pop(蓝图类型)
         return self.蓝图库[蓝图类型].pop(蓝图索引)
     
-    def 添加分类(self,新类名):
+    def 添加分类(self, 新类名:str):
         self.蓝图库[新类名] = []
         self._数据是否修改 = True
+    
+    def 修改类名(self,旧类名:str, 新类名:str):
+        新数据 = {}
+        for k, v in self.蓝图库.items():
+            新数据[新类名 if k == 旧类名 else k] = v
+        self.蓝图库 = 新数据
 
-    def 获取类表(self,排除项=None):
+    def 获取类表(self, 排除项:str|None=None) ->list:
         分类列表 = list(self.蓝图库.keys())
         if 排除项 != None:
             分类列表.remove(排除项)
         return 分类列表
     
-    def 列表写入(self,蓝图类型,蓝图列表,模式='添加'):
+    def 列表写入(self, 蓝图类型:str, 蓝图列表:list, 模式='添加'):
         if 模式 == '添加':
             self.蓝图库.setdefault(蓝图类型, [])
             名字列表 = [名["name"] for 名 in self.获取蓝图列表(蓝图类型)]
@@ -389,7 +412,7 @@ class 蓝图库编辑器(tk.Tk):
             self.蓝图库[蓝图类型] = 蓝图列表
             self._数据是否修改 = True
         
-    def 移动分类(self,蓝图类型,步):
+    def 移动分类(self,蓝图类型:str|None,步:int):
         蓝图列表 = list(self.蓝图库.items())
         索引 = [k[0] for k in 蓝图列表].index(蓝图类型)
         目标 = 索引 + 步
@@ -402,17 +425,18 @@ class 蓝图库编辑器(tk.Tk):
 
 
     # =========================== 工具 ===========================
+    @staticmethod
+    def 校验蓝图代码(蓝图代码:str) -> bool:
+        return bool(蓝图库编辑器.匹配蓝图代码.match(蓝图代码.strip()))
 
-    def 校验蓝图代码(self,蓝图代码):
-        return bool(self.匹配蓝图代码.match(蓝图代码.strip()))
-
-    def 检查名字(self,名字, 模式='检测'):
+    @staticmethod
+    def 检查名字(名字:str, 模式='检测'):
         if 模式 == '检测':
-            return 名字 and not any(c in self.非法字符 for c in 名字)
+            return 名字 and not any(c in 蓝图库编辑器.非法字符 for c in 名字)
         if 模式 == '规范':
-            return ''.join([char for char in 名字 if char not in self.非法字符])
+            return ''.join([char for char in 名字 if char not in 蓝图库编辑器.非法字符])
 
-    def 蓝图重名检测(self, 蓝图名, 蓝图分类,排除项索引=None):
+    def 蓝图重名检测(self, 蓝图名:str, 蓝图分类:str, 排除项索引:int|None=None) -> bool:
         名字列表 = [名["name"] for 名 in self.获取蓝图列表(蓝图分类)]
         if 排除项索引 != None:
             名字列表.pop(排除项索引)
@@ -421,7 +445,7 @@ class 蓝图库编辑器(tk.Tk):
         return True
     
     @staticmethod
-    def 添加序号(名, 列表):
+    def 添加序号(名:str, 列表:list) ->str:
         编号 = 1
         while True:
             新名 = f"{名}-{编号}"
@@ -430,7 +454,7 @@ class 蓝图库编辑器(tk.Tk):
             编号 += 1
 
     @staticmethod
-    def 检查蓝图库格式(蓝图库):
+    def 检查蓝图库格式(蓝图库:dict) -> bool:
         if not isinstance(蓝图库, dict) or len(蓝图库) == 0:
             return False
         for 蓝图列表 in 蓝图库.values():
@@ -466,7 +490,7 @@ class 蓝图库编辑器(tk.Tk):
         return f"data:image/png;base64,{base64数据}"
 
     @staticmethod
-    def 读取并处理图片(文件路径):
+    def 读取并处理图片(文件路径:str) -> tuple[bool, str]:
         try:
             with Image.open(文件路径) as f:
                 图片 = f.copy()
@@ -478,7 +502,7 @@ class 蓝图库编辑器(tk.Tk):
             return False, str(e)
 
     @staticmethod
-    def 从剪贴板获取图片():
+    def 从剪贴板获取图片() -> str|None:
         try:
             图片 = ImageGrab.grabclipboard()
             if 图片 is None:
@@ -487,12 +511,11 @@ class 蓝图库编辑器(tk.Tk):
             DataURI = 蓝图库编辑器.处理图片(图片)
             return DataURI
 
-        except Exception as e:
-            print(f"读取剪贴板图片失败: {e}")
+        except Exception:
             return None
     
     @staticmethod
-    def 判断DataURI类型(URI字符串: str):
+    def 判断DataURI类型(URI字符串: str) -> str|None:
 
         if not URI字符串.startswith('data:'):
             return None
@@ -515,20 +538,28 @@ class 蓝图库编辑器(tk.Tk):
             return None
         
     @staticmethod
-    def 写入图片(文件路径,base64文本):
+    def 写入图片(文件路径:str, base64文本:str):
         二进制数据 = base64.b64decode(base64文本)
         with open(文件路径, "wb") as f:
             f.write(二进制数据)
             
     @staticmethod
-    def 读取文件(文件路径):
+    def 读取文件(文件路径:str) -> str:
         with open(文件路径,"r",encoding="utf-8") as f:
             return f.read()
     
     @staticmethod
-    def 写入文件(文件路径,文本):
+    def 写入文件(文件路径:str, 文本:str):
         with open(文件路径,"w",encoding="utf-8") as f:
             f.write(文本)
+    
+    @staticmethod
+    def 从HTML读取数据(路径:str) -> str|None:
+        html = 蓝图库编辑器.读取文件(路径)
+        匹配数据 = 蓝图库编辑器.匹配HM蓝图库.search(html, re.DOTALL)
+        if not 匹配数据:
+            return None
+        return 匹配数据.group(2)
 
 
     # =========================== 业务 ===========================
@@ -537,7 +568,7 @@ class 蓝图库编辑器(tk.Tk):
         if self._当前蓝图是否锁定:
             self.通知('该蓝图不可修改')
             return
-        文件路径 = filedialog.askopenfilename(initialdir=".", filetypes=[("图片文件", "*.png;*.jpg;*.jpeg")])
+        文件路径 = filedialog.askopenfilename(filetypes=[("图片文件", "*.png;*.jpg;*.jpeg")])
         if not 文件路径:
             return
         状态,信息 = self.读取并处理图片(文件路径)
@@ -554,7 +585,8 @@ class 蓝图库编辑器(tk.Tk):
             self.通知('该蓝图不可修改')
             return
         try:
-            文件路径 = filedialog.askopenfilename(filetypes=[("*.txt","*.txt")], initialdir=".")
+            目录 = self.last_dir if hasattr(self, "last_dir") and self.last_dir else "."
+            文件路径 = filedialog.askopenfilename(filetypes=[("*.txt","*.txt")], initialdir=目录)
             if not 文件路径: return
             内容 = self.读取文件(文件路径)
             if self.校验蓝图代码(内容):
@@ -564,6 +596,7 @@ class 蓝图库编辑器(tk.Tk):
                 self.代码输入框.delete("1.0", tk.END)
                 self.代码输入框.insert("1.0", 内容)
                 self.通知('蓝图导入完成')
+                self.last_dir = os.path.dirname(文件路径)
             else:
                 messagebox.showwarning("警告", "蓝图格式不正确")
         except Exception as e:
@@ -609,24 +642,13 @@ class 蓝图库编辑器(tk.Tk):
         if self._当前蓝图是否锁定:
             self.通知('该蓝图不可修改')
             return
-        文本 = self.从剪贴板获取图片()
-        if 文本:
-            self.图片数据 = 文本
+        图片 = self.从剪贴板获取图片()
+        if 图片:
+            self.图片数据 = 图片
             self.加载图片预览()
             self.通知('成功粘贴截图')
-            return
-        try:
-            文本 = self.clipboard_get()
-        except tk.TclError:
-            self.通知('剪贴板无内容')
-            return
-        类型 = self.判断DataURI类型(文本)
-        if 类型 != "svg":
-            self.通知('剪贴板内容不是有效的图片')
-            return
-        self.图片数据 = 文本
-        self.加载图片预览()
-        self.通知('成功导入图片')
+        else:
+            self.通知('剪贴板没有截图')
 
     def 新建蓝图(self):
         if self.当前类型 == None:
@@ -646,7 +668,7 @@ class 蓝图库编辑器(tk.Tk):
         else:
             索引 = 列表长度
 
-        self.添加数据(self.当前类型, 新数据, 索引)
+        self.添加蓝图(self.当前类型, 新数据, 索引)
         self.当前蓝图索引 = 索引
         self.刷新蓝图列表()
         self.通知(f'已添加 {新数据["name"]}')
@@ -683,15 +705,15 @@ class 蓝图库编辑器(tk.Tk):
 
         # 如果没有选中蓝图则新增 没有则更改
         if self.当前蓝图索引 == None:
-            self.添加数据(self.当前类型, 新数据)
+            self.添加蓝图(self.当前类型, 新数据)
             self.当前蓝图索引 = len(self.获取蓝图列表(self.当前类型)) -1
         else:
-            self.更改数据(self.当前类型, 新数据, self.当前蓝图索引)
+            self.更改蓝图(self.当前类型, 新数据, self.当前蓝图索引)
        
         self.刷新蓝图列表()
         self.通知(f'{新数据["name"]} 已保存')
 
-    def 删除蓝图(self,快速删除=False):
+    def 删除蓝图(self,快速删除:bool=False):
         if self.当前类型 == None or self.当前蓝图索引 == None:
             if not 快速删除:
                 messagebox.showwarning("警告", "请先选择蓝图")
@@ -709,7 +731,7 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新蓝图列表()
         self.通知(f'{垃圾["name"]} 已删除')
 
-    def 排序蓝图(self,步):
+    def 排序蓝图(self,步:int):
         if self.当前类型 == None or self.当前蓝图索引 == None:
             self.通知('未选择蓝图')
             return
@@ -724,23 +746,10 @@ class 蓝图库编辑器(tk.Tk):
             self.通知('目标位置蓝图不可移动')
             return
         
-        self.添加数据(self.当前类型, self.移出数据(self.当前类型, self.当前蓝图索引), 目标)
+        self.添加蓝图(self.当前类型, self.移出数据(self.当前类型, self.当前蓝图索引), 目标)
         self.当前蓝图索引 = 目标
         self.刷新蓝图列表()
         self.通知('排序蓝图')
-    
-    def 排序分类(self, 步):
-        类型 = self.当前类型
-        if 类型 == None:
-            self.通知('未选择分类')
-            return
-        
-        if not self.移动分类(self.当前类型,步):
-            self.通知('已到顶了' if 步 < 0 else '已到底了')
-            return
-        self.刷新页面()
-        self.选择蓝图类型(类型)
-        self.通知('排序蓝图类型')
 
     def 添加蓝图分类(self):
         新类名 = simpledialog.askstring("输入", "请输入2~8个字符：")
@@ -760,26 +769,31 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新页面()
         self.选择蓝图类型(新类名)
         self.通知(f'已添加 {新类名} 分类')
+    
+    def 排序分类(self, 类型:str, 步:int):
+        if not self.移动分类(类型,步):
+            self.通知('已到顶了' if 步 < 0 else '已到底了')
+            return
+        当类 = self.当前类型
+        self.刷新页面()
+        self.选择蓝图类型(当类)
+        self.通知('排序蓝图类型')
 
-    def 删除蓝图分类(self):
+    def 删除蓝图分类(self,类型:str):
         if len(self.获取类表()) <= 1:
             messagebox.showwarning("警告", "不能删除最后一个分类")
             return
-        if not self.当前类型:
-            messagebox.showwarning("警告", "请先选分类")
+        if not messagebox.askyesno("确认", f"确定删除 ‘{类型}’ 吗？"):
             return
-        if not messagebox.askyesno("确认", f"确定删除 ‘{self.当前类型}’ 吗？"):
-            return
-        self.移出数据(self.当前类型)
-        self.通知(f'已删除 {self.当前类型} 分类')
+        self.移出数据(类型)
+        当类 = self.当前类型 if 类型 != self.当前类型 else None
         self.刷新页面()
+        self.选择蓝图类型(当类)
+        self.通知(f'已删除 {类型} 分类')
 
-    def 更名分类(self):
-        if self.当前类型 == None:
-            messagebox.showwarning("警告", "未选择蓝图类型")
-            return
-        
-        新类名 = simpledialog.askstring("输入", "请输入2~8个字符：", initialvalue=self.当前类型)
+
+    def 更名分类(self,类型:str):
+        新类名 = simpledialog.askstring("输入", "请输入2~8个字符：", initialvalue=类型)
         if not 新类名: return
         新类名 = 新类名.strip()
         if not self.检查名字(新类名):
@@ -791,16 +805,17 @@ class 蓝图库编辑器(tk.Tk):
         if 新类名 in self.获取类表():
             messagebox.showwarning("警告","不可输入相同的类名")
             return
-        self.列表写入(新类名, self.移出数据(self.当前类型), '修改')
-        self.通知(f'已将 {self.当前类型} 更名为 {新类名}')
+        当类 = self.当前类型 if 类型 != self.当前类型 else 新类名
+        self.修改类名(类型,新类名)
+        self.通知(f'已将 {类型} 更名为 {新类名}')
         self.刷新页面()
-        self.选择蓝图类型(新类名)
+        self.选择蓝图类型(当类)
 
     def 新建蓝图库(self):
-        if self._数据是否修改:
-            if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
-                return
-        self.载入蓝图库(self.新蓝图库)
+        提示 = "注意：当前数据未保存!" if self._数据是否修改 else  ""
+        if not messagebox.askyesno("确认", f"确定新建蓝图库吗？\n{提示}"):
+            return
+        self.从JSON字符串载入蓝图库(self.新蓝图库)
         self.刷新页面(),
         self.选择蓝图类型(self.获取类表()[0])
 
@@ -809,34 +824,35 @@ class 蓝图库编辑器(tk.Tk):
             if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
                 return
         try:
-            初始目录 = self.last_save_json if hasattr(self, "last_save_json") and self.last_save_json else "."
-            路径 = filedialog.askopenfilename(initialdir=初始目录,filetypes=[("*.json","*.json")],title="导入JSON文件")
+            目录 = os.path.dirname(self.last_json) if hasattr(self, "last_json") and self.last_json else "."
+            路径 = filedialog.askopenfilename(initialdir=目录,filetypes=[("*.json","*.json")],title="导入JSON文件")
             if not 路径: return
             内容 = self.读取文件(路径)
-            self.载入蓝图库(内容)
+            self.从JSON字符串载入蓝图库(内容)
             self.刷新页面()
             self.选择蓝图类型(self.获取类表()[0])
             messagebox.showinfo("成功", "导入完成")
             self.通知('导入JSON')
+            self.last_json = 路径
         except Exception as e:
             messagebox.showerror("错误",f"文件导入失败：\n{str(e)}")
 
     def 导出JSON(self):
         try:
-            初始目录 = self.last_save_json if hasattr(self, "last_save_json") and self.last_save_json else "."
-            路径 = filedialog.asksaveasfilename(initialdir=初始目录,defaultextension=".json", filetypes=[("*.json","*.json")],title="导出JSON文件")
+            目录 = os.path.dirname(self.last_json) if hasattr(self, "last_json") and self.last_json else "."
+            路径 = filedialog.asksaveasfilename(initialdir=目录,defaultextension=".json", filetypes=[("*.json","*.json")],title="导出JSON文件")
             if not 路径: return
-            self.写入文件(路径,self.读取蓝图库(2))
+            self.写入文件(路径,self.读取蓝图库为JSON字符串(4))
             messagebox.showinfo("成功", "导出完成")
             self.通知('导出JSON')
-            self.last_save_json = 路径
+            self.last_json = 路径
         except Exception as e:
             messagebox.showerror("错误",f"文件导出失败：\n{str(e)}")
 
     def 导出HTML(self):
         try:
             html = self.读取文件(self.HTML模板路径)
-            json字符串 = self.读取蓝图库().replace("\\", "\\\\").replace("\n", "\\n")
+            json字符串 = self.读取蓝图库为JSON字符串().replace("\\", "\\\\").replace("\n", "\\n")
             html = self.匹配HM蓝图库.sub(
                 rf"\1{json字符串}",
                 html,
@@ -847,9 +863,11 @@ class 蓝图库编辑器(tk.Tk):
                 html
             )
 
-            路径 = filedialog.asksaveasfilename(initialdir=".",defaultextension=".html", filetypes=[("HTML","*.html")],title="导出为HTML")
+            目录 = self.last_dir if hasattr(self, "last_dir") and self.last_dir else "."
+            路径 = filedialog.asksaveasfilename(initialdir=目录,defaultextension=".html", filetypes=[("HTML","*.html")],title="导出为HTML")
             if not 路径: return
             self.写入文件(路径,html)
+            self.last_dir = os.path.dirname(路径)
             if messagebox.askyesno("导出完成", "导出完成，是否打开HTML文件？"):
                 os.startfile(路径)
         except Exception as e:
@@ -860,17 +878,18 @@ class 蓝图库编辑器(tk.Tk):
             if not messagebox.askyesno("确认", "当前蓝图库未保存，确定载入新蓝图库吗？"):
                 return
         try:
-            路径 = filedialog.askopenfilename(initialdir=".",filetypes=[("HTML","*.html")],title="导入HTML文件")
+            目录 = self.last_dir if hasattr(self, "last_dir") and self.last_dir else "."
+            路径 = filedialog.askopenfilename(initialdir=目录,filetypes=[("HTML","*.html")],title="导入HTML文件")
             if not 路径: return
 
-            html = self.读取文件(路径)
-            匹配数据 = self.匹配HM蓝图库.search(html, re.DOTALL)
-            if not 匹配数据:
+            蓝图库JSON = self.从HTML读取数据(路径)
+            if not 蓝图库JSON:
                 return messagebox.showwarning("警告","这不是有效的HTML")
             
-            self.载入蓝图库(匹配数据.group(2))
+            self.从JSON字符串载入蓝图库(蓝图库JSON)
             self.刷新页面()
             self.选择蓝图类型(self.获取类表()[0])
+            self.last_dir = os.path.dirname(路径)
             messagebox.showinfo("成功", "导入完成")
             self.通知('导入成功')
 
@@ -887,7 +906,8 @@ class 蓝图库编辑器(tk.Tk):
             return messagebox.showwarning("警告", "未选择蓝图类型")
         if 操作 == '导入':
             try:
-                文件夹路径 = filedialog.askdirectory(initialdir=".",title="请选择蓝图文件夹")
+                目录 = self.last_dir if hasattr(self, "last_dir") and self.last_dir else "."
+                文件夹路径 = filedialog.askdirectory(initialdir=目录,title="请选择蓝图文件夹")
                 if not 文件夹路径:return
                 for 文件名 in os.listdir(文件夹路径):
                     if 文件名.lower().endswith(".txt"):
@@ -898,6 +918,7 @@ class 蓝图库编辑器(tk.Tk):
                             "name": self.检查名字(os.path.splitext(文件名)[0],'规范'),
                             "data": 文件内容
                             })
+                self.last_dir = 文件夹路径
             except Exception as e:
                 return messagebox.showerror("错误", f"文件夹读取失败：\n{str(e)}")
             if not 蓝图数据列表:
@@ -1009,8 +1030,10 @@ class 蓝图库编辑器(tk.Tk):
 
     def 导出文件夹(self):
         try:
-            根目录 = filedialog.askdirectory(initialdir=".", title="选择蓝图导出根目录")
+            目录 = self.last_dir if hasattr(self, "last_dir") and self.last_dir else "."
+            根目录 = filedialog.askdirectory(initialdir=目录, title="选择蓝图导出根目录")
             if not 根目录:return
+            self.last_dir = 根目录
             
             计数 = 0
             for 分类名 in self.获取类表():
@@ -1027,7 +1050,7 @@ class 蓝图库编辑器(tk.Tk):
                     try:
                         图片DataURI = 蓝图数据["img"].strip()
                         图片类型 = self.判断DataURI类型(图片DataURI)
-                        if 图片类型 in ["png","jpg","svg"]:
+                        if 图片类型:
                             图片路径 = os.path.join(分类路径, f"{名字}.{图片类型}")
                             self.写入图片(图片路径,图片DataURI.split(",")[1])
                     except:continue
@@ -1043,10 +1066,10 @@ class 蓝图库编辑器(tk.Tk):
             with open(self.获取配置文件路径(), "r", encoding="utf-8") as f:
                 配置 = json.load(f)
             if not 配置:return
-            if "last_save_json" in 配置 and 配置["last_save_json"]:
-                self.last_save_json = 配置["last_save_json"]
-            if "name" in 配置 and 配置["name"]:
-                self.name = 配置["name"]
+            键表 = ["last_json", "last_dir", "name"]
+            for 键 in 键表:
+                if 配置.get(键):
+                    setattr(self, 键, 配置[键])
         except Exception: return
     
     def 保存配置(self):
@@ -1056,14 +1079,15 @@ class 蓝图库编辑器(tk.Tk):
             if os.path.exists(路径):
                 with open(路径, "r", encoding="utf-8") as f:
                     配置 = json.load(f)
-            配置["last_save_json"] = self.last_save_json
-            #配置["name"] = self.name
+            键表 = ["last_json", "last_dir"]
+            for 键 in 键表:
+                配置[键] = getattr(self, 键)
             with open(路径, "w", encoding="utf-8") as f:
                 json.dump(配置, f, ensure_ascii=False, indent=4)
         except Exception: return
 
     @staticmethod
-    def 获取配置文件路径():
+    def 获取配置文件路径() -> str:
         应用数据目录 = os.getenv("APPDATA") # 获取 Windows 用户目录下的 AppData/Roaming
         软件配置文件夹 = os.path.join(应用数据目录, "DsBlueprint_Lib")
         配置文件路径 = os.path.join(软件配置文件夹, "config.json")

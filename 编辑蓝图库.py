@@ -38,8 +38,8 @@ class 蓝图库编辑器(tk.Tk):
         self._通知定时 = None
 
         self.title("戴森球计划球体蓝图库")
-        self.geometry("900x600")
         self.minsize(850, 500)
+        self.geometry(f"900x600+{(self.winfo_screenwidth()-900)//2}+{(self.winfo_screenheight()-600)//2}")
 
         self.样式 = ttk.Style()
         self.样式.configure("Category.TButton", padding=5)
@@ -241,7 +241,7 @@ class 蓝图库编辑器(tk.Tk):
         for 控件 in self.分类项框架.winfo_children():
             控件.destroy()
         for 蓝图类型 in 类型列表:
-            按钮 = ttk.Button(self.分类项框架, width=15, text=蓝图类型, style="Category.TButton",command=lambda c=蓝图类型: self.选择蓝图类型(c))
+            按钮 = ttk.Button(self.分类项框架, width=16, text=蓝图类型, style="Category.TButton",command=lambda c=蓝图类型: self.选择蓝图类型(c))
             按钮.bind("<Button-3>", lambda event, c=蓝图类型: self.打开分类右键菜单(event, c))
             按钮.pack(fill=tk.X, padx=5, pady=3)
 

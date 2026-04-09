@@ -100,7 +100,10 @@ function loadBP(bType) {
     const list = BPlist[bType];
     list.forEach(i => {
         const {name, data, img, memo} = i;
-        html += `<div class="card"><div style="margin:auto;">${name} <button onclick="cvBP('${name}')">复制</button></div><img src="${img || NoneImg}" width="150" height="150"><textarea class="card_data" id="${name}" readonly>${data}</textarea>`
+        html += `<div class="card">
+            <div style="margin:auto;">${name} <button onclick="cvBP('${name}')">复制</button></div>
+            <img src="${img || NoneImg}" width="150" height="150">
+            <textarea class="card_data" id="${name}" readonly>${data}</textarea>`
         if (memo){html += `<div class="Memo">${memo}</div>`};
         html +='</div>';
     });

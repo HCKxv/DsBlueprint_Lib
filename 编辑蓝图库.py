@@ -1018,13 +1018,23 @@ class 蓝图库编辑器(tk.Tk):
             self.选择蓝图类型(当前类型)
             self.通知("已合并")
             窗口.destroy()
+        
+        def 全选切换():
+            if 全选变量.get():
+                列表框.select_set(0, tk.END)
+            else:
+                列表框.select_clear(0, tk.END)
 
         窗口 = tk.Toplevel()
         窗口.title("合并蓝图库")
         窗口.geometry(f"300x250+{(窗口.winfo_screenwidth()-300)//2}+{(窗口.winfo_screenheight()-250)//2}")
         窗口.resizable(False, False)  # 禁止缩放
         tk.Label(窗口, text="选择要合并的分类", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
-        tk.Label(窗口, text="鼠标拖动或按住Ctrl/Shift多选", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
+        选择框架 = ttk.Frame(窗口)
+        选择框架.pack(padx=15, fill=tk.X, pady=(2, 0))
+        全选变量 = tk.BooleanVar(value=False)
+        ttk.Checkbutton(选择框架, text="全选", variable=全选变量, command=全选切换).pack(side=tk.LEFT)
+        tk.Label(选择框架, text="-鼠标拖动或按住Ctrl/Shift多选",fg="#999999", anchor="w").pack(side=tk.RIGHT)
         列表框架 = ttk.Frame(窗口)
         列表框架.pack(padx=15, fill=tk.BOTH,expand=True)
         列表框架.pack_propagate(False)
@@ -1037,7 +1047,7 @@ class 蓝图库编辑器(tk.Tk):
         分类列表 = list(读取的库.keys())
         for 类名 in 分类列表:
             列表框.insert(tk.END,类名)
-        tk.Label(窗口, text="如果蓝图重名将会自动添加序号", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
+        tk.Label(窗口, text="如果蓝图重名将会自动添加序号",fg="#999999", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
         按钮框架 = ttk.Frame(窗口)
         按钮框架.pack(pady=15,fill=tk.Y)
         ttk.Button(按钮框架, text="确认", command=确认).pack(side=tk.LEFT, padx=10)
@@ -1109,13 +1119,19 @@ class 蓝图库编辑器(tk.Tk):
             self.通知(消息)
             窗口.destroy()
         
+        def 全选切换():
+            if 全选变量.get():
+                列表框.select_set(0, tk.END)
+            else:
+                列表框.select_clear(0, tk.END)
+        
         # 初始化界面
         窗口 = tk.Toplevel()
         窗口.title("批量操作")
         窗口.geometry(f"500x350+{(窗口.winfo_screenwidth()-500)//2}+{(窗口.winfo_screenheight()-350)//2}")
         窗口.resizable(False, False)  # 禁止缩放
         if 操作 == '移动':
-            窗口.title("移动蓝图")
+            窗口.title(f"从 {self.当前类型} 移动蓝图")
             选项框架 = ttk.Frame(窗口)
             选项框架.pack(padx=15, fill=tk.X)
             tk.Label(选项框架, text=f"从 {self.当前类型} 移动到：").pack(side=tk.LEFT)
@@ -1129,14 +1145,20 @@ class 蓝图库编辑器(tk.Tk):
             选项.pack(side=tk.LEFT,)
             选项.configure(height=5)
         elif 操作 == '删除':
-            窗口.title("删除蓝图")
+            窗口.title(f"从 {self.当前类型} 删除蓝图")
         elif 操作 == '导入':
-            窗口.title("批量导入")
+            窗口.title(f"从 {os.path.basename(文件夹路径)} 批量导入")
             导入同名图片 = tk.IntVar(value=1)
             导入当前分类 = tk.IntVar(value=0)
-            ttk.Checkbutton(窗口, text="导入同名图片", variable=导入同名图片).pack(padx=15, fill=tk.X)
-            ttk.Checkbutton(窗口, text="导入到当前分类，如果已选择的话；否则创建新分类", variable=导入当前分类).pack(padx=15, fill=tk.X)
-        tk.Label(窗口, text="鼠标拖动或按住Ctrl/Shift多选", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
+            选项框架 = ttk.Frame(窗口)
+            选项框架.pack(padx=15, fill=tk.X)
+            ttk.Checkbutton(选项框架, text="导入同名图片", variable=导入同名图片).pack(side=tk.LEFT)
+            ttk.Checkbutton(选项框架, text="导入到当前分类", variable=导入当前分类).pack(side=tk.LEFT, padx=3)
+        选择框架 = ttk.Frame(窗口)
+        选择框架.pack(padx=15, fill=tk.X, pady=(2, 0))
+        全选变量 = tk.BooleanVar(value=False)
+        ttk.Checkbutton(选择框架, text="全选", variable=全选变量, command=全选切换).pack(side=tk.LEFT)
+        tk.Label(选择框架, text="-鼠标拖动或按住Ctrl/Shift多选",fg="#999999", anchor="w").pack(side=tk.RIGHT)
         列表框架 = ttk.Frame(窗口)
         列表框架.pack(padx=15, fill=tk.BOTH,expand=True)
         列表框架.pack_propagate(False)
@@ -1146,7 +1168,7 @@ class 蓝图库编辑器(tk.Tk):
         列表框.pack(fill=tk.BOTH, expand=True)
         滚动条.config(command=列表框.yview)
         if 操作 in ('移动','导入'):
-            tk.Label(窗口, text="如果重名将会自动添加序号", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
+            tk.Label(窗口, text="如果重名将会自动添加序号",fg="#999999", anchor="w").pack(padx=15, fill=tk.X, anchor=tk.W)
         按钮框架 = ttk.Frame(窗口)
         按钮框架.pack(pady=15,fill=tk.Y)
         ttk.Button(按钮框架, text="确认", command=确认操作).pack(side=tk.LEFT, padx=10)

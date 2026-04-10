@@ -205,7 +205,7 @@ class 蓝图库编辑器(tk.Tk):
     def 快捷键_复制选中蓝图代码(self, event:tk.Event=None):
         if self.当前类型 == None or self.当前蓝图索引 == None:
             self.通知("请选择蓝图")
-            return
+            return "break"
         try:
             蓝图数据 = self.获取蓝图(self.当前类型, self.当前蓝图索引)
             代码 = 蓝图数据.get("data", "").strip()
@@ -606,6 +606,9 @@ class 蓝图库编辑器(tk.Tk):
         if self._当前蓝图是否锁定:
             self.通知('该蓝图不可修改')
             return
+        if not self.图片数据:
+            self.通知('没有图片')
+            return
         self.图片数据 = None
         self.加载图片预览()
         self.通知('图片已删除')
@@ -790,7 +793,6 @@ class 蓝图库编辑器(tk.Tk):
         self.刷新页面()
         self.选择蓝图类型(当类)
         self.通知(f'已删除 {类型} 分类')
-
 
     def 更名分类(self,类型:str):
         新类名 = simpledialog.askstring("输入", "请输入2~8个字符：", initialvalue=类型)
